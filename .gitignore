@@ -1,0 +1,19 @@
+# ==========================================
+# Gitignore pour dosmines 
+# ==========================================
+
+.vscode/
+build/
+BORLANDC/
+PROJECT/
+
+*.obj
+*.prj
+*.dsk
+# --- Exécutables finaux ---
+DOSMINES.EXE
+LOG.TXT
+
+# --- Fichiers Système ---
+.DS_Store
+Thumbs.db
