@@ -1,6 +1,7 @@
 #ifndef MINESAPP_H
 #define MINESAPP_H
 
+#include <time.h>
 #include "common.h"
 #include "mouse.h"
 #include "video.h"
@@ -10,12 +11,25 @@ class MinesApp {
     Video v;
     Mouse m;
     Board b;
-    int curX, curY, curB, lastB;
-    int offX, offY;
+    GameState state;
+
+    int gridX, gridY;
+    int boardWidthPx, boardHeightPx;
+    int headerX, headerY, headerW, headerH;
+    int emojiX, emojiY;
+    int mineCounterX, timerCounterX, counterY;
+
+    time_t gameStartTime;
+    int elapsedSeconds;
+    int emojiState;
 
     void menu();
     void play(Difficulty d);
-    void drawBoard();
+    void computeLayout();
+    void drawFullInterface();
+    void drawHeader();
+    void drawGrid();
+    void drawSingleCell(int gx, int gy);
 
 public:
     MinesApp();
