@@ -21,6 +21,12 @@
 #define EMOJI_WON      3
 #define EMOJI_LOST     4
 
+/* Couleur de fond UI correspondant à l'index 11 du BMP (Gris clair 189,190,189) */
+#define UI_BG_COLOR   11
+#define UI_WHITE      13
+#define UI_DARKGRAY   5
+#define UI_BLACK      0
+
 class Video {
     void* digitSprites[12]; /* 0=1..9=0, 10=tiret, 11=vide */
     void* emojiSprites[5];  /* 24x24 */
@@ -28,7 +34,7 @@ class Video {
     void* numSprites[8];    /* 1..8 (16x16) */
     int spritesLoaded;
 
-    int mapBmpColorToVGA(unsigned char bmpIndex);
+    void setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b);
 
 public:
     Video();

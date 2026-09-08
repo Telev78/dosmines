@@ -1,4 +1,5 @@
 #include <graphics.h>
+#include <dos.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <alloc.h>
@@ -26,6 +27,13 @@ struct BMPInfoHeader {
     long           biYPelsPerMeter;
     unsigned long  biClrUsed;
     unsigned long  biClrImportant;
+};
+
+struct BMPColorEntry {
+    unsigned char rgbBlue;
+    unsigned char rgbGreen;
+    unsigned char rgbRed;
+    unsigned char rgbReserved;
 };
 #pragma pack()
 
@@ -63,27 +71,19 @@ void Video::freeSprites() {
     spritesLoaded = 0;
 }
 
-/* Correspondance exacte palette BMP 4-bits -> Palette standard Borland BGI (16 couleurs) */
-int Video::mapBmpColorToVGA(unsigned char bmpIndex) {
-    switch (bmpIndex) {
-        case 0:  return BLACK;
-        case 1:  return BLUE;
-        case 2:  return LIGHTBLUE;
-        case 3:  return RED;
-        case 4:  return LIGHTRED;
-        case 5:  return DARKGRAY;
-        case 6:  return GREEN;
-        case 7:  return CYAN;
-        case 8:  return BROWN;
-        case 9:  return MAGENTA;
-        case 10: return -1; /* Vert fluo : transparent ! */
-        case 11: return LIGHTGRAY;
-        case 12: return YELLOW;
-        case 13: return WHITE;
-        case 14:
-        case 15:
-        default: return LIGHTGRAY;
-    }
+/* Envoi direct au DAC VGA (ports 0x3C8 / 0x3C9, composantes sur 6 bits 0..63) */
+void Video::setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b) {
+    /* Table de correspondance Registres d'Attributs EGA standard 16 couleurs -> Registres DAC VGA */
+    static const unsigned char egaToDac[16] = {
+        0, 1, 2, 3, 4, 5, 20, 7, 56, 57, 58, 59, 60, 61, 62, 63
+    };
+
+    unsigned char dacEntry = (index >= 0 && index < 16) ? egaToDac[index] : (unsigned char)index;
+
+    outportb(0x3C8, dacEntry);
+    outportb(0x3C9, r >> 2);
+    outportb(0x3C9, g >> 2);
+    outportb(0x3C9, b >> 2);
 }
 
 int Video::loadSprites(const char* filepath) {
@@ -103,6 +103,16 @@ int Video::loadSprites(const char* filepath) {
         return 0;
     }
 
+    /* 1. Lecture de la palette de 16 couleurs du BMP et injection matérielle dans le DAC VGA */
+    BMPColorEntry bmpPalette[16];
+    fseek(f, sizeof(BMPFileHeader) + sizeof(BMPInfoHeader), SEEK_SET);
+    if (fread(bmpPalette, sizeof(BMPColorEntry), 16, f) == 16) {
+        int c;
+        for (c = 0; c < 16; c++) {
+            setVgaPaletteIndex(c, bmpPalette[c].rgbRed, bmpPalette[c].rgbGreen, bmpPalette[c].rgbBlue);
+        }
+    }
+
     int imgW = (int)bih.biWidth;
     int imgH = (int)bih.biHeight;
     int rowStride = ((imgW * 4 + 31) / 32) * 4;
@@ -119,7 +129,7 @@ int Video::loadSprites(const char* filepath) {
     int tempY = 0;
     int i, px, py;
 
-    /* 1. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
+    /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
     /* Ordre séquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++) {
         int srcX = 1 + i * 14;
@@ -137,8 +147,9 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = mapBmpColorToVGA(nibble);
-                putpixel(tempX + px, tempY + py, (color == -1) ? BLACK : color);
+                /* Masque vert fluo (index 10) remplacé par noir pour les compteurs */
+                int color = (nibble == 10) ? UI_BLACK : (int)nibble;
+                putpixel(tempX + px, tempY + py, color);
             }
         }
 
@@ -149,7 +160,7 @@ int Video::loadSprites(const char* filepath) {
         }
     }
 
-    /* 2. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
+    /* 3. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
     /* Normal, Cliqué, Surpris, Victoire, Défaite */
     for (i = 0; i < 5; i++) {
         int srcX = 1 + i * 25;
@@ -167,8 +178,9 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = mapBmpColorToVGA(nibble);
-                putpixel(tempX + px, tempY + py, (color == -1) ? LIGHTGRAY : color);
+                /* Masque vert fluo (index 10) remplacé par le fond gris UI (index 11) */
+                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
+                putpixel(tempX + px, tempY + py, color);
             }
         }
 
@@ -179,7 +191,7 @@ int Video::loadSprites(const char* filepath) {
         }
     }
 
-    /* 3. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
+    /* 4. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
     /* Non-révélée, Vide, Drapeau, ?, ? enfoncé, Mine, Mine rouge, Fausse mine */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
@@ -197,8 +209,8 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = mapBmpColorToVGA(nibble);
-                putpixel(tempX + px, tempY + py, (color == -1) ? LIGHTGRAY : color);
+                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
+                putpixel(tempX + px, tempY + py, color);
             }
         }
 
@@ -209,7 +221,7 @@ int Video::loadSprites(const char* filepath) {
         }
     }
 
-    /* 4. Ligne 4 (Chiffres proximité 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
+    /* 5. Ligne 4 (Chiffres de proximité 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
         int srcY = 67;
@@ -226,8 +238,8 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = mapBmpColorToVGA(nibble);
-                putpixel(tempX + px, tempY + py, (color == -1) ? LIGHTGRAY : color);
+                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
+                putpixel(tempX + px, tempY + py, color);
             }
         }
 
@@ -288,7 +300,6 @@ void Video::drawCounter(int x, int y, int value) {
         int pos = -value;
         d[1] = (pos / 10) % 10;
         d[2] = pos % 10;
-        /* Mappage : chiffre 1..9 -> index 0..8, chiffre 0 -> index 9 */
         d[1] = (d[1] == 0) ? 9 : (d[1] - 1);
         d[2] = (d[2] == 0) ? 9 : (d[2] - 1);
     } else {
@@ -308,21 +319,21 @@ void Video::drawCounter(int x, int y, int value) {
 }
 
 void Video::drawBezel(int x, int y, int w, int h, int out) {
-    setcolor(out ? WHITE : DARKGRAY);
+    setcolor(out ? UI_WHITE : UI_DARKGRAY);
     line(x, y, x + w, y);
     line(x, y, x, y + h);
-    setcolor(out ? DARKGRAY : WHITE);
+    setcolor(out ? UI_DARKGRAY : UI_WHITE);
     line(x + w, y, x + w, y + h);
     line(x, y + h, x + w, y + h);
 }
 
 void Video::drawSunkenRect(int x, int y, int w, int h) {
-    setcolor(DARKGRAY);
+    setcolor(UI_DARKGRAY);
     line(x, y, x + w, y);
     line(x, y, x, y + h);
-    setcolor(WHITE);
+    setcolor(UI_WHITE);
     line(x + w, y, x + w, y + h);
     line(x, y + h, x + w, y + h);
-    setfillstyle(SOLID_FILL, BLACK);
+    setfillstyle(SOLID_FILL, UI_BLACK);
     bar(x + 1, y + 1, x + w - 1, y + h - 1);
 }
