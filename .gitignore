@@ -4,11 +4,10 @@
 
 build/
 BORLANDC/
-PROJECT/
+PROJECT/*.dsk
 
 *.obj
-*.prj
-*.dsk
+
 # --- Exécutables finaux ---
 DOSMINES.EXE
 LOG.TXT
