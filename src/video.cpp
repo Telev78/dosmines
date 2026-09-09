@@ -2,6 +2,7 @@
 #include <dos.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <alloc.h>
 #include "video.h"
 
@@ -36,6 +37,39 @@ struct BMPColorEntry {
     unsigned char rgbReserved;
 };
 #pragma pack()
+
+/* Classe interne de flux abstrait : fichier ou memoire far */
+class BMPStream {
+    FILE* f;
+    const unsigned char far* mem;
+    long memSize;
+    long memPos;
+
+public:
+    BMPStream(FILE* file) : f(file), mem(NULL), memSize(0L), memPos(0L) {}
+    BMPStream(const unsigned char far* m, long size) : f(NULL), mem(m), memSize(size), memPos(0L) {}
+
+    int seek(long offset) {
+        if (f) return fseek(f, offset, SEEK_SET);
+        if (offset < 0 || offset > memSize) return -1;
+        memPos = offset;
+        return 0;
+    }
+
+    unsigned int read(void* dest, unsigned int bytes) {
+        if (f) return (unsigned int)fread(dest, 1, bytes, f);
+        if (memPos >= memSize) return 0;
+        if (memPos + (long)bytes > memSize) bytes = (unsigned int)(memSize - memPos);
+        _fmemcpy(dest, mem + memPos, bytes);
+        memPos += bytes;
+        return bytes;
+    }
+};
+
+static int decodeBMPInternal(Video* vid, BMPStream &stream,
+                            int &colHighlight, int &colShadow, int &colSurface, int &colSunkenBg,
+                            void* digitSprites[12], void* emojiSprites[5],
+                            void* cellSprites[8], void* numSprites[8]);
 
 Video::Video() : spritesLoaded(0), graphInitialized(0),
                colHighlight(15), colShadow(8), colSunkenBg(0), colSurface(7) {
@@ -114,32 +148,53 @@ int Video::loadSprites(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f) return 0;
 
+    BMPStream stream(f);
+    int res = decodeBMPInternal(this, stream, colHighlight, colShadow, colSurface, colSunkenBg,
+                                digitSprites, emojiSprites, cellSprites, numSprites);
+    fclose(f);
+    if (res) spritesLoaded = 1;
+    return res;
+}
+
+int Video::loadSpritesFromMemory(const unsigned char far* data, long size) {
+    if (!data || size <= 0L) return 0;
+
+    BMPStream stream(data, size);
+    int res = decodeBMPInternal(this, stream, colHighlight, colShadow, colSurface, colSunkenBg,
+                                digitSprites, emojiSprites, cellSprites, numSprites);
+    if (res) spritesLoaded = 1;
+    return res;
+}
+
+static int decodeBMPInternal(Video* vid, BMPStream &stream,
+                            int &colHighlight, int &colShadow, int &colSurface, int &colSunkenBg,
+                            void* digitSprites[12], void* emojiSprites[5],
+                            void* cellSprites[8], void* numSprites[8]) {
+    (void)vid;
     BMPFileHeader bfh;
     BMPInfoHeader bih;
 
-    if (fread(&bfh, sizeof(BMPFileHeader), 1, f) != 1 || bfh.bfType != 0x4D42) {
-        fclose(f);
+    if (stream.read(&bfh, sizeof(BMPFileHeader)) != sizeof(BMPFileHeader) || bfh.bfType != 0x4D42) {
         return 0;
     }
 
-    if (fread(&bih, sizeof(BMPInfoHeader), 1, f) != 1 || bih.biBitCount != 4) {
-        fclose(f);
+    if (stream.read(&bih, sizeof(BMPInfoHeader)) != sizeof(BMPInfoHeader) || bih.biBitCount != 4) {
         return 0;
     }
 
-        /* 1. Lecture de la palette du BMP et injection matérielle dans le DAC VGA */
+    /* 1. Lecture de la palette du BMP et injection matérielle dans le DAC VGA */
     int numColors = (int)bih.biClrUsed;
     if (numColors == 0 || numColors > 16) {
         numColors = 16; /* Format standard BMP 4-bits */
     }
 
-            BMPColorEntry bmpPalette[16];
-    fseek(f, sizeof(BMPFileHeader) + sizeof(BMPInfoHeader), SEEK_SET);
-    int readColors = fread(bmpPalette, sizeof(BMPColorEntry), numColors, f);
-    if (readColors > 0) {
+    BMPColorEntry bmpPalette[16];
+    stream.seek(sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
+    int readColors = stream.read(bmpPalette, sizeof(BMPColorEntry) * numColors) / sizeof(BMPColorEntry);
+        if (readColors > 0) {
         int palIdx;
         for (palIdx = 0; palIdx < readColors; palIdx++) {
-            setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
+            vid->setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
         }
     }
 
@@ -150,7 +205,6 @@ int Video::loadSprites(const char* filepath) {
     /* Allocation d'un petit buffer pour une seule ligne (rowStride = 88 octets) */
     unsigned char* rowBuffer = (unsigned char*)malloc(rowStride);
     if (!rowBuffer) {
-        fclose(f);
         return 0;
     }
 
@@ -159,16 +213,16 @@ int Video::loadSprites(const char* filepath) {
     int cellRowBottom = imgH - 1 - 65;
     int cellRowMid    = imgH - 1 - 58;
 
-    fseek(f, bfh.bfOffBits + (long)cellRowTop * rowStride, SEEK_SET);
-    fread(rowBuffer, 1, rowStride, f);
+    stream.seek(bfh.bfOffBits + (long)cellRowTop * rowStride);
+    stream.read(rowBuffer, rowStride);
     colHighlight = (rowBuffer[1 / 2] & 0x0F);
 
-    fseek(f, bfh.bfOffBits + (long)cellRowBottom * rowStride, SEEK_SET);
-    fread(rowBuffer, 1, rowStride, f);
+    stream.seek(bfh.bfOffBits + (long)cellRowBottom * rowStride);
+    stream.read(rowBuffer, rowStride);
     colShadow = (rowBuffer[16 / 2] >> 4);
 
-    fseek(f, bfh.bfOffBits + (long)cellRowMid * rowStride, SEEK_SET);
-    fread(rowBuffer, 1, rowStride, f);
+    stream.seek(bfh.bfOffBits + (long)cellRowMid * rowStride);
+    stream.read(rowBuffer, rowStride);
     colSurface = (rowBuffer[8 / 2] >> 4);
 
     /* 2. Fond creusé des compteurs : couleur la plus sombre de la palette */
@@ -192,7 +246,7 @@ int Video::loadSprites(const char* filepath) {
     int tempY = 0;
     int i, px, py;
 
-        /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
+    /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
     /* Ordre séquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++) {
         int srcX = 1 + i * 14;
@@ -203,8 +257,8 @@ int Video::loadSprites(const char* filepath) {
         for (py = 0; py < sh; py++) {
             int bmpRow = imgH - 1 - (srcY + py);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
-            fseek(f, fileOffset, SEEK_SET);
-            fread(rowBuffer, 1, rowStride, f);
+            stream.seek(fileOffset);
+            stream.read(rowBuffer, rowStride);
 
             for (px = 0; px < sw; px++) {
                 int curX = srcX + px;
@@ -232,8 +286,8 @@ int Video::loadSprites(const char* filepath) {
         for (py = 0; py < sh; py++) {
             int bmpRow = imgH - 1 - (srcY + py);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
-            fseek(f, fileOffset, SEEK_SET);
-            fread(rowBuffer, 1, rowStride, f);
+            stream.seek(fileOffset);
+            stream.read(rowBuffer, rowStride);
 
             for (px = 0; px < sw; px++) {
                 int curX = srcX + px;
@@ -261,8 +315,8 @@ int Video::loadSprites(const char* filepath) {
         for (py = 0; py < sh; py++) {
             int bmpRow = imgH - 1 - (srcY + py);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
-            fseek(f, fileOffset, SEEK_SET);
-            fread(rowBuffer, 1, rowStride, f);
+            stream.seek(fileOffset);
+            stream.read(rowBuffer, rowStride);
 
             for (px = 0; px < sw; px++) {
                 int curX = srcX + px;
@@ -289,8 +343,8 @@ int Video::loadSprites(const char* filepath) {
         for (py = 0; py < sh; py++) {
             int bmpRow = imgH - 1 - (srcY + py);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
-            fseek(f, fileOffset, SEEK_SET);
-            fread(rowBuffer, 1, rowStride, f);
+            stream.seek(fileOffset);
+            stream.read(rowBuffer, rowStride);
 
             for (px = 0; px < sw; px++) {
                 int curX = srcX + px;
@@ -308,8 +362,6 @@ int Video::loadSprites(const char* filepath) {
     }
 
     free(rowBuffer);
-    fclose(f);
-    spritesLoaded = 1;
     cleardevice();
     return 1;
 }

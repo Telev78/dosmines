@@ -35,14 +35,15 @@ class Video {
     int colSunkenBg;  /* Fond creusé des compteurs LED (couleur la plus sombre) */
     int colSurface;   /* Fond moyen de l'interface */
 
+public:
     void setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b);
 
-public:
     Video();
     ~Video();
 
     int  init();
     int  loadSprites(const char* filepath);
+    int  loadSpritesFromMemory(const unsigned char far* data, long size);
     void freeSprites();
 
     void drawCell(int x, int y, int type);

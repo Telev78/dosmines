@@ -12,10 +12,10 @@ BUILD_DIR = ..\build
 TARGET   = $(BUILD_DIR)\dosmines.exe
 
 # Fichiers objets attendus directement dans le dossier build pour le linker
-BUILD_OBJS = $(BUILD_DIR)\main.obj $(BUILD_DIR)\minesapp.obj $(BUILD_DIR)\board.obj $(BUILD_DIR)\video.obj $(BUILD_DIR)\mouse.obj $(BUILD_DIR)\egavga.obj
+BUILD_OBJS = $(BUILD_DIR)\main.obj $(BUILD_DIR)\minesapp.obj $(BUILD_DIR)\board.obj $(BUILD_DIR)\video.obj $(BUILD_DIR)\mouse.obj $(BUILD_DIR)\assetdef.obj $(BUILD_DIR)\egavga.obj
 
 # 1. RÈGLE DE LIAISON FINALE
-$(TARGET): main.obj minesapp.obj board.obj video.obj mouse.obj egavga.obj
+$(TARGET): main.obj minesapp.obj board.obj video.obj mouse.obj assetdef.obj egavga.obj
 	bcc -ml $(LIBS) -e$(TARGET) @&&|
 $(BUILD_OBJS) graphics.lib
 |

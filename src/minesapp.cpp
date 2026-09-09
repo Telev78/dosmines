@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <conio.h>
 #include "minesapp.h"
+#include "assetdef.h"
 
 MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL) {
 }
@@ -25,15 +26,17 @@ void MinesApp::run() {
         return;
     }
 
-    /* 3. Chargement de la sprite sheet : essai multi-chemins DOS */
-    if (!v.loadSprites("asset/asset.bmp")) {
-        if (!v.loadSprites("asset\\asset.bmp")) {
-            if (!v.loadSprites("asset.bmp")) {
-                if (!v.loadSprites("asset/minesweepersprite.bmp")) {
-                    v.loadSprites("asset\\minesweepersprite.bmp");
-                }
-            }
-        }
+    /* 3. Chargement de la sprite sheet :
+          Essai de chargement externe prioritaire (asset.bmp / asset/asset.bmp),
+          puis fallback transparent sur la sprite-sheet embarquée dans le binaire */
+    int loaded = v.loadSprites("asset.bmp") ||
+                 v.loadSprites("asset\\asset.bmp") ||
+                 v.loadSprites("asset/asset.bmp") ||
+                 v.loadSprites("minesweepersprite.bmp") ||
+                 v.loadSprites("asset\\minesweepersprite.bmp");
+
+    if (!loaded) {
+        v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
     }
 
     menu();
