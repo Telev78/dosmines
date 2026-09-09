@@ -21,18 +21,19 @@
 #define EMOJI_WON      3
 #define EMOJI_LOST     4
 
-/* Couleur de fond UI correspondant à l'index 11 du BMP (Gris clair 189,190,189) */
-#define UI_BG_COLOR   11
-#define UI_WHITE      13
-#define UI_DARKGRAY   5
-#define UI_BLACK      0
-
 class Video {
     void* digitSprites[12]; /* 0=1..9=0, 10=tiret, 11=vide */
     void* emojiSprites[5];  /* 24x24 */
     void* cellSprites[8];   /* 16x16 */
     void* numSprites[8];    /* 1..8 (16x16) */
     int spritesLoaded;
+    int graphInitialized;
+
+    /* Rôles de palette UI déterminés dynamiquement d'après les couleurs du BMP */
+    int colHighlight; /* Lumière du biseau 3D (couleur la plus claire) */
+    int colShadow;    /* Ombre du biseau 3D (couleur sombre intermédiaire) */
+    int colSunkenBg;  /* Fond creusé des compteurs LED (couleur la plus sombre) */
+    int colSurface;   /* Fond moyen de l'interface */
 
     void setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b);
 
@@ -40,6 +41,7 @@ public:
     Video();
     ~Video();
 
+    int  init();
     int  loadSprites(const char* filepath);
     void freeSprites();
 
@@ -51,6 +53,8 @@ public:
 
     void drawBezel(int x, int y, int w, int h, int out);
     void drawSunkenRect(int x, int y, int w, int h);
+    void drawPanel(int x, int y, int w, int h, int out);
+    void setTextColor();
 };
 
 #endif

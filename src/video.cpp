@@ -37,21 +37,45 @@ struct BMPColorEntry {
 };
 #pragma pack()
 
-Video::Video() : spritesLoaded(0) {
+Video::Video() : spritesLoaded(0), graphInitialized(0),
+               colHighlight(15), colShadow(8), colSunkenBg(0), colSurface(7) {
     int i;
     for (i = 0; i < 12; i++) digitSprites[i] = NULL;
     for (i = 0; i < 5; i++)  emojiSprites[i] = NULL;
     for (i = 0; i < 8; i++)  cellSprites[i] = NULL;
     for (i = 0; i < 8; i++)  numSprites[i] = NULL;
+}
 
+int Video::init() {
+    /* 1. Détection matérielle du sous-système graphique */
+    int gdriver = DETECT, gmode;
+    detectgraph(&gdriver, &gmode);
+
+    /* Le jeu exige impérativement une carte VGA (640x480 16 couleurs, Mode 12h) */
+    if (gdriver != VGA) {
+        return 0;
+    }
+
+    /* 2. Enregistrement du driver BGI lié et initialisation */
     registerbgidriver(EGAVGA_driver);
-    int gdir = VGA, gmod = VGAHI;
-    initgraph(&gdir, &gmod, "");
+    gdriver = VGA;
+    gmode   = VGAHI;
+    initgraph(&gdriver, &gmode, "");
+
+    int err = graphresult();
+    if (err != grOk) {
+        return 0;
+    }
+
+    graphInitialized = 1;
+    return 1;
 }
 
 Video::~Video() {
     freeSprites();
-    closegraph();
+    if (graphInitialized) {
+        closegraph();
+    }
 }
 
 void Video::freeSprites() {
@@ -103,13 +127,19 @@ int Video::loadSprites(const char* filepath) {
         return 0;
     }
 
-    /* 1. Lecture de la palette de 16 couleurs du BMP et injection matérielle dans le DAC VGA */
-    BMPColorEntry bmpPalette[16];
+        /* 1. Lecture de la palette du BMP et injection matérielle dans le DAC VGA */
+    int numColors = (int)bih.biClrUsed;
+    if (numColors == 0 || numColors > 16) {
+        numColors = 16; /* Format standard BMP 4-bits */
+    }
+
+            BMPColorEntry bmpPalette[16];
     fseek(f, sizeof(BMPFileHeader) + sizeof(BMPInfoHeader), SEEK_SET);
-    if (fread(bmpPalette, sizeof(BMPColorEntry), 16, f) == 16) {
-        int c;
-        for (c = 0; c < 16; c++) {
-            setVgaPaletteIndex(c, bmpPalette[c].rgbRed, bmpPalette[c].rgbGreen, bmpPalette[c].rgbBlue);
+    int readColors = fread(bmpPalette, sizeof(BMPColorEntry), numColors, f);
+    if (readColors > 0) {
+        int palIdx;
+        for (palIdx = 0; palIdx < readColors; palIdx++) {
+            setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
         }
     }
 
@@ -124,12 +154,45 @@ int Video::loadSprites(const char* filepath) {
         return 0;
     }
 
+    /* 1. Extraction directe depuis le sprite de la cellule non-dévoilée */
+    int cellRowTop    = imgH - 1 - 50;
+    int cellRowBottom = imgH - 1 - 65;
+    int cellRowMid    = imgH - 1 - 58;
+
+    fseek(f, bfh.bfOffBits + (long)cellRowTop * rowStride, SEEK_SET);
+    fread(rowBuffer, 1, rowStride, f);
+    colHighlight = (rowBuffer[1 / 2] & 0x0F);
+
+    fseek(f, bfh.bfOffBits + (long)cellRowBottom * rowStride, SEEK_SET);
+    fread(rowBuffer, 1, rowStride, f);
+    colShadow = (rowBuffer[16 / 2] >> 4);
+
+    fseek(f, bfh.bfOffBits + (long)cellRowMid * rowStride, SEEK_SET);
+    fread(rowBuffer, 1, rowStride, f);
+    colSurface = (rowBuffer[8 / 2] >> 4);
+
+    /* 2. Fond creusé des compteurs : couleur la plus sombre de la palette */
+    long minLum = 30000L;
+    colSunkenBg = 0;
+    if (readColors > 0) {
+        int lumIdx;
+        for (lumIdx = 0; lumIdx < readColors; lumIdx++) {
+            long lum = (long)bmpPalette[lumIdx].rgbRed * 30L +
+                       (long)bmpPalette[lumIdx].rgbGreen * 59L +
+                       (long)bmpPalette[lumIdx].rgbBlue * 11L;
+            if (lum < minLum) {
+                minLum = lum;
+                colSunkenBg = lumIdx;
+            }
+        }
+    }
+
     /* Coordonnées de dessin temporaire sur l'écran d'initialisation (0,0) */
     int tempX = 0;
     int tempY = 0;
     int i, px, py;
 
-    /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
+        /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
     /* Ordre séquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++) {
         int srcX = 1 + i * 14;
@@ -147,9 +210,7 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                /* Masque vert fluo (index 10) remplacé par noir pour les compteurs */
-                int color = (nibble == 10) ? UI_BLACK : (int)nibble;
-                putpixel(tempX + px, tempY + py, color);
+                putpixel(tempX + px, tempY + py, (int)nibble);
             }
         }
 
@@ -178,9 +239,7 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                /* Masque vert fluo (index 10) remplacé par le fond gris UI (index 11) */
-                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
-                putpixel(tempX + px, tempY + py, color);
+                putpixel(tempX + px, tempY + py, (int)nibble);
             }
         }
 
@@ -209,8 +268,7 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
-                putpixel(tempX + px, tempY + py, color);
+                putpixel(tempX + px, tempY + py, (int)nibble);
             }
         }
 
@@ -238,8 +296,7 @@ int Video::loadSprites(const char* filepath) {
                 int curX = srcX + px;
                 unsigned char byteVal = rowBuffer[curX / 2];
                 unsigned char nibble = (curX % 2 == 0) ? (byteVal >> 4) : (byteVal & 0x0F);
-                int color = (nibble == 10) ? UI_BG_COLOR : (int)nibble;
-                putpixel(tempX + px, tempY + py, color);
+                putpixel(tempX + px, tempY + py, (int)nibble);
             }
         }
 
@@ -319,21 +376,35 @@ void Video::drawCounter(int x, int y, int value) {
 }
 
 void Video::drawBezel(int x, int y, int w, int h, int out) {
-    setcolor(out ? UI_WHITE : UI_DARKGRAY);
+    setcolor(out ? colHighlight : colShadow);
     line(x, y, x + w, y);
     line(x, y, x, y + h);
-    setcolor(out ? UI_DARKGRAY : UI_WHITE);
+    setcolor(out ? colShadow : colHighlight);
     line(x + w, y, x + w, y + h);
     line(x, y + h, x + w, y + h);
 }
 
 void Video::drawSunkenRect(int x, int y, int w, int h) {
-    setcolor(UI_DARKGRAY);
+    setcolor(colShadow);
     line(x, y, x + w, y);
     line(x, y, x, y + h);
-    setcolor(UI_WHITE);
+    setcolor(colHighlight);
     line(x + w, y, x + w, y + h);
     line(x, y + h, x + w, y + h);
-    setfillstyle(SOLID_FILL, UI_BLACK);
+    setfillstyle(SOLID_FILL, colSunkenBg);
     bar(x + 1, y + 1, x + w - 1, y + h - 1);
+}
+
+void Video::drawPanel(int x, int y, int w, int h, int out) {
+    /* Fond plein de la surface */
+    setfillstyle(SOLID_FILL, colSurface);
+    bar(x + 1, y + 1, x + w - 1, y + h - 1);
+    /* Biseau 3D */
+    drawBezel(x, y, w, h, out);
+}
+
+void Video::setTextColor() {
+    /* Choix automatique de la couleur de texte pour un contraste maximal sur colSurface */
+    /* Si colHighlight et colShadow sont identiques, on utilise colSunkenBg */
+    setcolor(colSunkenBg);
 }

@@ -8,12 +8,24 @@ MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL) {
 }
 
 void MinesApp::run() {
-    if (!m.init()) {
-        printf("Pilote souris non detecte!\n");
+    /* 1. Vérification matérielle VGA */
+    if (!v.init()) {
+        printf("\n=======================================================\n");
+        printf(" ERREUR : Carte graphique VGA non detectee !\n");
+        printf(" Ce jeu necessite une carte VGA et le mode 640x480x16.\n");
+        printf(" Les cartes EGA, CGA et Hercules ne sont pas supportees.\n");
+        printf("=======================================================\n\n");
         return;
     }
 
-    /* Chargement de la sprite sheet : essai multi-chemins DOS */
+    /* 2. Initialisation de la souris */
+    if (!m.init()) {
+        closegraph();
+        printf("\nErreur : Pilote souris DOS non detecte (int 33h) !\n");
+        return;
+    }
+
+    /* 3. Chargement de la sprite sheet : essai multi-chemins DOS */
     if (!v.loadSprites("asset/asset.bmp")) {
         if (!v.loadSprites("asset\\asset.bmp")) {
             if (!v.loadSprites("asset.bmp")) {
@@ -52,11 +64,11 @@ void MinesApp::computeLayout() {
 void MinesApp::drawFullInterface() {
     cleardevice();
 
-    /* Cadre principal englobant (look Windows 3.1) */
-    v.drawBezel(headerX - 6, headerY - 6, headerW + 12, (gridY + boardHeightPx + 6) - (headerY - 6), 1);
+    /* Cadre principal englobant (look Windows 3.1) avec fond opaque */
+    v.drawPanel(headerX - 6, headerY - 6, headerW + 12, (gridY + boardHeightPx + 6) - (headerY - 6), 1);
 
     /* En-tête */
-    v.drawBezel(headerX, headerY, headerW, headerH, 0);
+    v.drawPanel(headerX, headerY, headerW, headerH, 0);
 
     /* Grille en relief creusé */
     v.drawBezel(gridX - 3, gridY - 3, boardWidthPx + 6, boardHeightPx + 6, 0);
@@ -118,18 +130,21 @@ void MinesApp::menu() {
     state = STATE_MENU;
     cleardevice();
 
-    /* Cadre de sélection */
-    v.drawBezel(190, 130, 260, 210, 1);
-    setcolor(BLACK);
+    /* Cadre de sélection avec fond plein texturé */
+    v.drawPanel(190, 130, 260, 210, 1);
+    v.setTextColor();
     outtextxy(250, 150, "DEMINEUR DOS");
 
-    v.drawBezel(210, 180, 220, 32, 1);
+    v.drawPanel(210, 180, 220, 32, 1);
+    v.setTextColor();
     outtextxy(230, 192, "1. DEBUTANT (9x9)");
 
-    v.drawBezel(210, 225, 220, 32, 1);
+    v.drawPanel(210, 225, 220, 32, 1);
+    v.setTextColor();
     outtextxy(230, 237, "2. INTERMEDIAIRE (16x16)");
 
-    v.drawBezel(210, 270, 220, 32, 1);
+    v.drawPanel(210, 270, 220, 32, 1);
+    v.setTextColor();
     outtextxy(230, 282, "3. AVANCE (30x16)");
 
     m.show();
