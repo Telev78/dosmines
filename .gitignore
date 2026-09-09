@@ -2,7 +2,6 @@
 # Gitignore pour dosmines 
 # ==========================================
 
-.vscode/
 build/
 BORLANDC/
 PROJECT/

@@ -1,0 +1,103 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compiler sous Borland C++ 3.1 - DEBUG (DOSBox)",
+            "type": "shell",
+            // Il faut ajouter ton chemin à DOSBOX dans la variable d'environnement DOSBOX_PATH
+            "command": "${env:DOSBOX_PATH}\\dosbox.exe",
+            "args": [
+                "-conf", "${env:DOSBOX_PATH}\\vscode.conf",
+                "-c", "mount c \"${workspaceFolder}\"",
+                "-c", "set PATH=%PATH%;c:\\borlandc\\bin",
+                "-c", "c:",
+                "-c", "cd src",
+                "-c", "make -DDEBUG > ..\\build\\log.txt",
+                "-c", "type ..\\build\\log.txt",
+                "-c", "pause",
+                "-c", "exit"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Compiler sous Borland C++ 3.1 - RELEASE (DOSBox)",
+            "type": "shell",
+            // Il faut ajouter ton chemin à DOSBOX dans la variable d'environnement DOSBOX_PATH
+            "command": "${env:DOSBOX_PATH}\\dosbox.exe",
+            "args": [
+                "-conf", "${env:DOSBOX_PATH}\\vscode.conf",
+                "-c", "mount c \"${workspaceFolder}\"",
+                "-c", "set PATH=%PATH%;c:\\borlandc\\bin",
+                "-c", "c:",
+                "-c", "cd src",
+                "-c", "make > ..\\build\\log.txt",
+                "-c", "type ..\\build\\log.txt",
+                "-c", "pause",
+                "-c", "exit"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Exécuter l'application DOS",
+            "type": "shell",
+            "command": "${env:DOSBOX_PATH}\\dosbox.exe",
+            "args": [
+                "-conf", "${env:DOSBOX_PATH}\\vscode.conf",
+                "-c", "mount c \"${workspaceFolder}\"",
+                "-c", "set PATH=%PATH%;c:\\borlandc\\bin",
+                "-c", "c:",
+                "-c", "cd build",
+                "-c", "DosMines.EXE",
+                "-c", "pause",
+                "-c", "exit"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Nettoyer le projet DOS (Clean)",
+            "type": "shell",
+            "command": "${env:DOSBOX_PATH}\\dosbox.exe",
+            "args": [
+                "-conf", "${env:DOSBOX_PATH}\\vscode.conf",
+                "-c", "mount c \"${workspaceFolder}\"",
+                "-c", "set PATH=%PATH%;c:\\borlandc\\bin",
+                "-c", "c:",
+                "-c", "cd src",
+                "-c", "make clean",
+                "-c", "pause",
+                "-c", "exit"
+            ],
+            "group": "none",
+            "problemMatcher": []
+        },
+        {
+            "label": "Ouvre DOS",
+            "type": "shell",
+            "command": "${env:DOSBOX_PATH}\\dosbox.exe",
+            "args": [
+                "-conf", "${env:DOSBOX_PATH}\\vscode.conf",
+                "-c", "mount c \"${workspaceFolder}\"",
+                "-c", "set PATH=%PATH%;c:\\borlandc\\bin",
+                "-c", "c:",
+                "-c", "cd build"
+            ],
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+    ]
+}

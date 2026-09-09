@@ -4,8 +4,12 @@ INCLUDES = -I$(BC_PATH)\INCLUDE
 LIBS     = -L$(BC_PATH)\LIB
 BGI      = $(BC_PATH)\BGI
 
-# Options du compilateur : -ml (Modèle Large)
-CFLAGS   = -ml $(INCLUDES)
+# Par défaut, si DEBUG n'est pas défini, on est en Release
+!ifdef DEBUG
+CFLAGS = -ml -v -y -O-    # Model Large, Debug info, Pas d'optimisation
+!else
+CFLAGS = -ml -v- -O2 -vi -3 -y- # Model Large, Pas de debug info, Optimisation vitesse
+!endif
 
 BUILD_DIR = ..\build
 
@@ -16,7 +20,7 @@ BUILD_OBJS = $(BUILD_DIR)\main.obj $(BUILD_DIR)\minesapp.obj $(BUILD_DIR)\board.
 
 # 1. RÈGLE DE LIAISON FINALE
 $(TARGET): main.obj minesapp.obj board.obj video.obj mouse.obj assetdef.obj egavga.obj
-	bcc -ml $(LIBS) -e$(TARGET) @&&|
+	bcc $(CFLAGS) $(LIBS) -e$(TARGET) @&&|
 $(BUILD_OBJS) graphics.lib
 |
 
