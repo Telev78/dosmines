@@ -73,8 +73,8 @@ void MinesApp::drawFullInterface() {
     /* En-tête */
     v.drawPanel(headerX, headerY, headerW, headerH, 0);
 
-    /* Grille en relief creusé */
-    v.drawBezel(gridX - 3, gridY - 3, boardWidthPx + 6, boardHeightPx + 6, 0);
+    /* Grille en relief creusé encadrant pile les cellules de gridX à gridX + boardWidthPx - 1 */
+    v.drawBezel(gridX - 1, gridY - 1, boardWidthPx + 1, boardHeightPx + 1, 0);
 
     drawHeader();
     drawGrid();
@@ -214,6 +214,7 @@ void MinesApp::play(Difficulty d) {
         if (kbhit()) {
             char k = getch();
             if (k == 27) { /* Echap */
+                m.hide();
                 menu();
                 return;
             }
@@ -313,6 +314,7 @@ void MinesApp::play(Difficulty d) {
     while (state != STATE_PLAYING) {
         if (kbhit()) {
             getch();
+            m.hide();
             menu();
             return;
         }

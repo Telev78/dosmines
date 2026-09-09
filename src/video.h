@@ -37,6 +37,7 @@ class Video {
 
 public:
     void setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b);
+    void setDisplayEnable(int enable);
 
     Video();
     ~Video();

@@ -8,7 +8,7 @@ BGI      = $(BC_PATH)\BGI
 !ifdef DEBUG
 CFLAGS = -ml -v -y -O-    # Model Large, Debug info, Pas d'optimisation
 !else
-CFLAGS = -ml -v- -O2 -vi -3 -y- # Model Large, Pas de debug info, Optimisation vitesse
+CFLAGS = -ml -v- -O2 -vi -2 -y- # Model Large, Pas de debug info, Optimisation vitesse
 !endif
 
 BUILD_DIR = ..\build

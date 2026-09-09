@@ -144,14 +144,40 @@ void Video::setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsi
     outportb(0x3C9, b >> 2);
 }
 
+/* Activation / Desactivation du signal video via le sequenceur VGA (port 0x3C4 / 0x3C5) */
+void Video::setDisplayEnable(int enable) {
+    /* Registre 1 du sequenceur VGA : Clocking Mode Register */
+    /* Bit 5 (0x20) : Screen Off (1 = extinction / pas de balayage, 0 = affichage normal) */
+    outportb(0x3C4, 0x01);
+    unsigned char val = inportb(0x3C5);
+    if (enable) {
+        outportb(0x3C5, val & ~0x20); /* Rallume l'ecran */
+    } else {
+        outportb(0x3C5, val | 0x20);  /* Eteint l'ecran */
+    }
+}
+
 int Video::loadSprites(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f) return 0;
+
+    /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+    setDisplayEnable(0);
+
+    /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+    int k;
+    for (k = 0; k < 16; k++) {
+        setVgaPaletteIndex(k, 0, 0, 0);
+    }
 
     BMPStream stream(f);
     int res = decodeBMPInternal(this, stream, colHighlight, colShadow, colSurface, colSunkenBg,
                                 digitSprites, emojiSprites, cellSprites, numSprites);
     fclose(f);
+
+    /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+    setDisplayEnable(1);
+
     if (res) spritesLoaded = 1;
     return res;
 }
@@ -159,9 +185,22 @@ int Video::loadSprites(const char* filepath) {
 int Video::loadSpritesFromMemory(const unsigned char far* data, long size) {
     if (!data || size <= 0L) return 0;
 
+    /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+    setDisplayEnable(0);
+
+    /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+    int k;
+    for (k = 0; k < 16; k++) {
+        setVgaPaletteIndex(k, 0, 0, 0);
+    }
+
     BMPStream stream(data, size);
     int res = decodeBMPInternal(this, stream, colHighlight, colShadow, colSurface, colSunkenBg,
                                 digitSprites, emojiSprites, cellSprites, numSprites);
+
+    /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+    setDisplayEnable(1);
+
     if (res) spritesLoaded = 1;
     return res;
 }
@@ -182,7 +221,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         return 0;
     }
 
-    /* 1. Lecture de la palette du BMP et injection matérielle dans le DAC VGA */
+    /* 1. Lecture de la palette du BMP (stockée localement, PAS encore injectée au DAC pour garder l'écran noir) */
     int numColors = (int)bih.biClrUsed;
     if (numColors == 0 || numColors > 16) {
         numColors = 16; /* Format standard BMP 4-bits */
@@ -191,12 +230,6 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     BMPColorEntry bmpPalette[16];
     stream.seek(sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
     int readColors = stream.read(bmpPalette, sizeof(BMPColorEntry) * numColors) / sizeof(BMPColorEntry);
-        if (readColors > 0) {
-        int palIdx;
-        for (palIdx = 0; palIdx < readColors; palIdx++) {
-            vid->setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
-        }
-    }
 
     int imgW = (int)bih.biWidth;
     int imgH = (int)bih.biHeight;
@@ -208,7 +241,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         return 0;
     }
 
-    /* 1. Extraction directe depuis le sprite de la cellule non-dévoilée */
+    /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-dévoilée */
     int cellRowTop    = imgH - 1 - 50;
     int cellRowBottom = imgH - 1 - 65;
     int cellRowMid    = imgH - 1 - 58;
@@ -225,7 +258,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     stream.read(rowBuffer, rowStride);
     colSurface = (rowBuffer[8 / 2] >> 4);
 
-    /* 2. Fond creusé des compteurs : couleur la plus sombre de la palette */
+    /* 3. Fond creusé des compteurs : couleur la plus sombre de la palette */
     long minLum = 30000L;
     colSunkenBg = 0;
     if (readColors > 0) {
@@ -246,7 +279,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     int tempY = 0;
     int i, px, py;
 
-    /* 2. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
+    /* 4. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
     /* Ordre séquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++) {
         int srcX = 1 + i * 14;
@@ -275,7 +308,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         }
     }
 
-    /* 3. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
+    /* 5. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
     /* Normal, Cliqué, Surpris, Victoire, Défaite */
     for (i = 0; i < 5; i++) {
         int srcX = 1 + i * 25;
@@ -304,7 +337,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         }
     }
 
-    /* 4. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
+    /* 6. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
     /* Non-révélée, Vide, Drapeau, ?, ? enfoncé, Mine, Mine rouge, Fausse mine */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
@@ -333,7 +366,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         }
     }
 
-    /* 5. Ligne 4 (Chiffres de proximité 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
+    /* 7. Ligne 4 (Chiffres de proximité 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
         int srcY = 67;
@@ -363,6 +396,20 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
 
     free(rowBuffer);
     cleardevice();
+
+        /* 8. Maintenant que l'écran est effacé, on injecte les vraies couleurs de palette au DAC VGA */
+    if (readColors > 0) {
+        int palIdx;
+        for (palIdx = 0; palIdx < readColors; palIdx++) {
+            vid->setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
+        }
+        /* Si le BMP a moins de 16 couleurs (ex: 14), restaurer le blanc standard pour l'index 15 */
+        /* indispensable pour que le pilote souris DOS (qui utilise l'index 15 pour le blanc) ne devienne pas noir */
+        for (palIdx = readColors; palIdx < 16; palIdx++) {
+            vid->setVgaPaletteIndex(palIdx, 255, 255, 255);
+        }
+    }
+
     return 1;
 }
 
