@@ -27,7 +27,9 @@ BUILD_OBJS = $(BUILD_DIR)\main.obj \
              $(BUILD_DIR)\video.obj \
              $(BUILD_DIR)\mouse.obj \
              $(BUILD_DIR)\assetdef.obj \
-             $(BUILD_DIR)\egavga.obj
+             $(BUILD_DIR)\egavga.obj \
+             $(BUILD_DIR)\sans.obj \
+             $(BUILD_DIR)\litt.obj
 
 # 1. RÈGLE DE LIAISON FINALE
 $(TARGET): $(BUILD_OBJS)
@@ -37,6 +39,12 @@ $(BUILD_OBJS) graphics.lib
 
 $(BUILD_DIR)\egavga.obj: $(BGI)\EGAVGA.BGI
 	$(BGI)\bgiobj $(BGI)\EGAVGA.BGI $(BUILD_DIR)\egavga.obj _EGAVGA_driver
+
+$(BUILD_DIR)\sans.obj: $(BGI)\SANS.CHR
+	$(BGI)\bgiobj $(BGI)\SANS.CHR $(BUILD_DIR)\sans.obj _sansserif_font
+
+$(BUILD_DIR)\litt.obj: $(BGI)\LITT.CHR
+	$(BGI)\bgiobj $(BGI)\LITT.CHR $(BUILD_DIR)\litt.obj _small_font
 
 # 2. RÈGLE GÉNÉRIQUE DE COMPILATION (.cpp -> .obj dans BUILD_DIR)
 .cpp.obj:

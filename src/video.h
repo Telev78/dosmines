@@ -57,6 +57,7 @@ public:
     void drawSunkenRect(int x, int y, int w, int h);
     void drawPanel(int x, int y, int w, int h, int out);
     void setTextColor();
+    void setCreditColor();
 };
 
 #endif

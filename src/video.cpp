@@ -90,8 +90,11 @@ int Video::init() {
         return 0;
     }
 
-    /* 2. Enregistrement du driver BGI lié et initialisation */
+    /* 2. Enregistrement du driver BGI et des polices vectorielles liées */
     registerbgidriver(EGAVGA_driver);
+    registerbgifont(sansserif_font);
+    registerbgifont(small_font);
+
     gdriver = VGA;
     gmode   = VGAHI;
     initgraph(&gdriver, &gmode, "");
@@ -504,6 +507,16 @@ void Video::drawPanel(int x, int y, int w, int h, int out) {
 
 void Video::setTextColor() {
     /* Choix automatique de la couleur de texte pour un contraste maximal sur colSurface */
-    /* Si colHighlight et colShadow sont identiques, on utilise colSunkenBg */
     setcolor(colSunkenBg);
+}
+
+void Video::setCreditColor() {
+    /* Si la palette est bicolore (noir et blanc), colShadow est noir (0), ce qui se */
+    /* confondrait avec le fond d'écran noir. On bascule alors sur colHighlight (blanc). */
+    /* En mode couleur, colShadow (gris foncé) offre un contraste doux et feutré sur fond noir. */
+    if (colShadow == colSunkenBg) {
+        setcolor(colHighlight);
+    } else {
+        setcolor(colShadow);
+    }
 }

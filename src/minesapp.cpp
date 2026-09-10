@@ -133,22 +133,43 @@ void MinesApp::menu() {
     state = STATE_MENU;
     cleardevice();
 
-    /* Cadre de sélection avec fond plein texturé */
-    v.drawPanel(190, 130, 260, 210, 1);
-    v.setTextColor();
-    outtextxy(250, 150, "DEMINEUR DOS");
+    int panelX = 190, panelY = 115, panelW = 260, panelH = 230;
 
-    v.drawPanel(210, 180, 220, 32, 1);
+    /* 1. Cadre de sélection avec fond plein texturé */
+    v.drawPanel(panelX, panelY, panelW, panelH, 1);
     v.setTextColor();
-    outtextxy(230, 192, "1. DEBUTANT (9x9)");
 
-    v.drawPanel(210, 225, 220, 32, 1);
-    v.setTextColor();
-    outtextxy(230, 237, "2. INTERMEDIAIRE (16x16)");
+    /* 2. Titre "DEMINEUR" en police vectorielle Sans-Serif, plus grand et parfaitement centré */
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 3);
+    const char* title = "DEMINEUR";
+    int titleX = panelX + (panelW - textwidth((char*)title)) / 2;
+    outtextxy(titleX, panelY + 15, (char*)title);
 
-    v.drawPanel(210, 270, 220, 32, 1);
+    /* 3. Boutons en police standard avec centrage vertical */
+    settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
+
+    v.drawPanel(210, 175, 220, 32, 1);
     v.setTextColor();
-    outtextxy(230, 282, "3. AVANCE (30x16)");
+    outtextxy(230, 187, "1. DEBUTANT (9x9)");
+
+    v.drawPanel(210, 220, 220, 32, 1);
+    v.setTextColor();
+    outtextxy(230, 232, "2. INTERMEDIAIRE (16x16)");
+
+    v.drawPanel(210, 265, 220, 32, 1);
+    v.setTextColor();
+    outtextxy(230, 277, "3. AVANCE (30x16)");
+
+    /* 4. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
+    settextstyle(SMALL_FONT, HORIZ_DIR, 4);
+    v.setCreditColor();
+    outtextxy(15, 460, "(C) Telev");
+
+    const char* credRight = "Sprites: Black Squirrel";
+    outtextxy(625 - textwidth((char*)credRight), 460, (char*)credRight);
+
+    /* Rétablir la police par défaut pour le reste du jeu */
+    settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 
     m.show();
     int mx, my, mb;
@@ -166,9 +187,9 @@ void MinesApp::menu() {
         m.getStatus(mx, my, mb);
         if ((mb & 1) && !(lastB & 1)) {
             if (mx >= 210 && mx <= 430) {
-                if (my >= 180 && my <= 212) play(BEGINNER);
-                else if (my >= 225 && my <= 257) play(INTERMEDIATE);
-                else if (my >= 270 && my <= 302) play(ADVANCED);
+                if (my >= 175 && my <= 207) play(BEGINNER);
+                else if (my >= 220 && my <= 252) play(INTERMEDIATE);
+                else if (my >= 265 && my <= 297) play(ADVANCED);
             }
         }
         lastB = mb;
