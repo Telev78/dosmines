@@ -2,7 +2,7 @@
 # Gitignore pour dosmines 
 # ==========================================
 
-build/
+build/*
 BORLANDC/
 PROJECT/*.dsk
 
