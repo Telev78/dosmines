@@ -5,7 +5,7 @@
 #include "minesapp.h"
 #include "assetdef.h"
 
-MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL) {
+MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL), questionMarksEnabled(1) {
 }
 
 void MinesApp::run() {
@@ -91,7 +91,7 @@ void MinesApp::drawHeader() {
     v.drawCounter(timerCounterX, counterY, elapsedSeconds);
 }
 
-void MinesApp::drawSingleCell(int gx, int gy) {
+void MinesApp::drawSingleCell(int gx, int gy, int isDepressed) {
     Cell &c = b.get(gx, gy);
     int px = gridX + gx * 16;
     int py = gridY + gy * 16;
@@ -103,8 +103,18 @@ void MinesApp::drawSingleCell(int gx, int gy) {
             } else {
                 v.drawCell(px, py, SPR_CELL_FLAG);
             }
+        } else if (c.isQuestion) {
+            if (isDepressed) {
+                v.drawCell(px, py, SPR_CELL_Q_CLICKED);
+            } else {
+                v.drawCell(px, py, SPR_CELL_QUESTION);
+            }
         } else {
-            v.drawCell(px, py, SPR_CELL_UNREVEALED);
+            if (isDepressed) {
+                v.drawCell(px, py, SPR_CELL_EMPTY);
+            } else {
+                v.drawCell(px, py, SPR_CELL_UNREVEALED);
+            }
         }
     } else {
         if (c.isMine) {
@@ -133,7 +143,7 @@ void MinesApp::menu() {
     state = STATE_MENU;
     cleardevice();
 
-    int panelX = 190, panelY = 115, panelW = 260, panelH = 230;
+    int panelX = 190, panelY = 110, panelW = 260, panelH = 260;
 
     /* 1. Cadre de sélection avec fond plein texturé */
     v.drawPanel(panelX, panelY, panelW, panelH, 1);
@@ -144,23 +154,35 @@ void MinesApp::menu() {
     const char* title = "DEMINEUR";
     int titleX = panelX + (panelW - textwidth((char*)title)) / 2;
     outtextxy(titleX, panelY + 15, (char*)title);
+    outtextxy(titleX + 1, panelY + 15, (char*)title);
+    outtextxy(titleX, panelY + 16, (char*)title);
 
     /* 3. Boutons en police standard avec centrage vertical */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 
-    v.drawPanel(210, 175, 220, 32, 1);
+    v.drawPanel(210, 170, 220, 32, 1);
     v.setTextColor();
-    outtextxy(230, 187, "1. DEBUTANT (9x9)");
+    outtextxy(230, 182, "1. DEBUTANT (9x9)");
 
-    v.drawPanel(210, 220, 220, 32, 1);
+    v.drawPanel(210, 212, 220, 32, 1);
     v.setTextColor();
-    outtextxy(230, 232, "2. INTERMEDIAIRE (16x16)");
+    outtextxy(230, 224, "2. INTERMEDIAIRE (16x16)");
 
-    v.drawPanel(210, 265, 220, 32, 1);
+    v.drawPanel(210, 254, 220, 32, 1);
     v.setTextColor();
-    outtextxy(230, 277, "3. AVANCE (30x16)");
+    outtextxy(230, 266, "3. AVANCE (30x16)");
 
-    /* 4. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
+    /* 4. Bouton d'option toggle pour les marques (?) */
+    int optY = 298;
+    v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+    v.setTextColor();
+    if (questionMarksEnabled) {
+        outtextxy(222, optY + 10, "[X] MARQUES (?)  (M)");
+    } else {
+        outtextxy(222, optY + 10, "[ ] MARQUES (?)  (M)");
+    }
+
+    /* 5. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
     outtextxy(15, 460, "(C) Telev");
@@ -174,6 +196,7 @@ void MinesApp::menu() {
     m.show();
     int mx, my, mb;
     int lastB = 0;
+    int pressedBtn = 0; /* 0=aucun, 1=debutant, 2=inter, 3=avance, 4=option */
 
     while (state == STATE_MENU) {
         if (kbhit()) {
@@ -181,17 +204,56 @@ void MinesApp::menu() {
             if (ch == '1') play(BEGINNER);
             else if (ch == '2') play(INTERMEDIATE);
             else if (ch == '3') play(ADVANCED);
+            else if (ch == 'm' || ch == 'M' || ch == '?') {
+                questionMarksEnabled = !questionMarksEnabled;
+                m.hide();
+                v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+                v.setTextColor();
+                outtextxy(222, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
+                m.show();
+            }
             else if (ch == 27) return; /* Echap pour quitter */
         }
 
         m.getStatus(mx, my, mb);
+
+        /* Détection Mouse-Down : on note quel bouton commence à être cliqué */
         if ((mb & 1) && !(lastB & 1)) {
             if (mx >= 210 && mx <= 430) {
-                if (my >= 175 && my <= 207) play(BEGINNER);
-                else if (my >= 220 && my <= 252) play(INTERMEDIATE);
-                else if (my >= 265 && my <= 297) play(ADVANCED);
+                if (my >= 170 && my <= 202) pressedBtn = 1;
+                else if (my >= 212 && my <= 244) pressedBtn = 2;
+                else if (my >= 254 && my <= 286) pressedBtn = 3;
+                else if (my >= 298 && my <= 326) pressedBtn = 4;
+                else pressedBtn = 0;
+            } else {
+                pressedBtn = 0;
             }
         }
+
+        /* Détection Mouse-Up : l'action ne s'exécute QUE si le curseur est TOUJOURS sur le même bouton */
+        if (!(mb & 1) && (lastB & 1)) {
+            if (pressedBtn != 0 && (mx >= 210 && mx <= 430)) {
+                if (pressedBtn == 1 && (my >= 170 && my <= 202)) {
+                    play(BEGINNER);
+                    return;
+                } else if (pressedBtn == 2 && (my >= 212 && my <= 244)) {
+                    play(INTERMEDIATE);
+                    return;
+                } else if (pressedBtn == 3 && (my >= 254 && my <= 286)) {
+                    play(ADVANCED);
+                    return;
+                } else if (pressedBtn == 4 && (my >= 298 && my <= 326)) {
+                    questionMarksEnabled = !questionMarksEnabled;
+                    m.hide();
+                    v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+                    v.setTextColor();
+                    outtextxy(222, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
+                    m.show();
+                }
+            }
+            pressedBtn = 0;
+        }
+
         lastB = mb;
     }
 }
@@ -212,6 +274,8 @@ void MinesApp::play(Difficulty d) {
     int mx, my, mb;
     int lastB = 0;
     time_t lastTick = 0;
+    int pressedCellX = -1, pressedCellY = -1;
+    int pressedOnEmoji = 0;
 
     while (state == STATE_PLAYING) {
         /* Gestion du chronomètre */
@@ -243,12 +307,12 @@ void MinesApp::play(Difficulty d) {
 
         m.getStatus(mx, my, mb);
 
-        /* Visage surpris lorsque l'on maintient le clic sur la grille */
         int gx = (mx - gridX) / 16;
         int gy = (my - gridY) / 16;
         int onGrid = (gx >= 0 && gx < b.getW() && gy >= 0 && gy < b.getH());
         int onEmoji = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
 
+        /* Visage de l'émoji selon l'état souris */
         int targetEmoji = EMOJI_NORMAL;
         if (onEmoji && (mb & 1)) {
             targetEmoji = EMOJI_CLICKED;
@@ -263,55 +327,95 @@ void MinesApp::play(Difficulty d) {
             m.show();
         }
 
-        /* Clic sur le bouton Emoji (Reset) */
-        if (!(mb & 1) && (lastB & 1) && onEmoji) {
-            m.hide();
-            b.setup(d);
-            emojiState = EMOJI_NORMAL;
-            elapsedSeconds = 0;
-            gameStartTime = 0;
-            drawFullInterface();
-            m.show();
-            lastB = mb;
-            continue;
+        /* 1. Détection Mouse-Down : on mémorise la case ou l'émoji cliqué */
+        if ((mb & 1) && !(lastB & 1)) {
+            if (onEmoji) {
+                pressedOnEmoji = 1;
+                pressedCellX = -1;
+                pressedCellY = -1;
+            } else if (onGrid) {
+                pressedCellX = gx;
+                pressedCellY = gy;
+                pressedOnEmoji = 0;
+                /* Afficher la case en état appuyé */
+                m.hide();
+                drawSingleCell(gx, gy, 1);
+                m.show();
+            } else {
+                pressedCellX = -1;
+                pressedCellY = -1;
+                pressedOnEmoji = 0;
+            }
         }
 
-        /* Interaction sur la grille */
-        if (onGrid) {
-            /* 1. Détection Chord (clic gauche + droit ensemble) */
-            if ((mb & 1) && (mb & 2) && !(lastB & 1 && lastB & 2)) {
-                int exploded = 0;
+        /* Suivi du déplacement de la souris pendant que le bouton gauche est maintenu */
+        if ((mb & 1) && (pressedCellX >= 0 || pressedCellY >= 0)) {
+            /* Si le curseur a bougé sur une autre case ou hors grille, on restaure la case enfoncée */
+            if (!onGrid || gx != pressedCellX || gy != pressedCellY) {
                 m.hide();
-                b.chord(gx, gy, exploded);
-                if (exploded) {
-                    state = STATE_LOST;
-                } else if (b.checkVictory()) {
-                    state = STATE_WON;
+                drawSingleCell(pressedCellX, pressedCellY, 0);
+                m.show();
+                pressedCellX = -1;
+                pressedCellY = -1;
+            }
+        }
+
+        /* 2. Clic droit simple (Drapeau / ?) au Mouse-Down */
+        if ((mb & 2) && !(lastB & 2) && !(mb & 1) && onGrid) {
+            m.hide();
+            b.toggleFlag(gx, gy, questionMarksEnabled);
+            drawSingleCell(gx, gy);
+            v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
+            m.show();
+        }
+
+        /* 3. Chord (clic gauche + droit simultanés) */
+        if ((mb & 1) && (mb & 2) && !(lastB & 1 && lastB & 2) && onGrid) {
+            int exploded = 0;
+            m.hide();
+            b.chord(gx, gy, exploded);
+            if (exploded) {
+                state = STATE_LOST;
+            } else if (b.checkVictory()) {
+                state = STATE_WON;
+            }
+            drawGrid();
+            v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
+            m.show();
+            pressedCellX = -1;
+            pressedCellY = -1;
+            pressedOnEmoji = 0;
+        }
+
+        /* 4. Détection Mouse-Up (Relâchement du clic gauche) */
+        if (!(mb & 1) && (lastB & 1)) {
+            /* Bouton Emoji : réinitialise la partie uniquement si relâché DESSUS */
+            if (pressedOnEmoji && onEmoji) {
+                m.hide();
+                b.setup(d);
+                emojiState = EMOJI_NORMAL;
+                elapsedSeconds = 0;
+                gameStartTime = 0;
+                drawFullInterface();
+                m.show();
+            }
+            /* Grille : révèle la case uniquement si le curseur est TOUJOURS sur la même case */
+            else if (pressedCellX >= 0 && pressedCellY >= 0 && onGrid) {
+                if (gx == pressedCellX && gy == pressedCellY) {
+                    m.hide();
+                    int res = b.reveal(gx, gy);
+                    if (res == 0) {
+                        state = STATE_LOST;
+                    } else if (b.checkVictory()) {
+                        state = STATE_WON;
+                    }
+                    drawGrid();
+                    m.show();
                 }
-                drawGrid();
-                v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
-                m.show();
             }
-            /* 2. Clic gauche simple (Révélation) */
-            else if ((mb & 1) && !(lastB & 1) && !(mb & 2)) {
-                m.hide();
-                int res = b.reveal(gx, gy);
-                if (res == 0) {
-                    state = STATE_LOST;
-                } else if (b.checkVictory()) {
-                    state = STATE_WON;
-                }
-                drawGrid();
-                m.show();
-            }
-            /* 3. Clic droit simple (Drapeau) */
-            else if ((mb & 2) && !(lastB & 2) && !(mb & 1)) {
-                m.hide();
-                b.toggleFlag(gx, gy);
-                drawSingleCell(gx, gy);
-                v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
-                m.show();
-            }
+            pressedCellX = -1;
+            pressedCellY = -1;
+            pressedOnEmoji = 0;
         }
 
         lastB = mb;

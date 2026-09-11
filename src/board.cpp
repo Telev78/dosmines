@@ -95,17 +95,36 @@ int Board::reveal(int x, int y) {
     return 1;
 }
 
-void Board::toggleFlag(int x, int y) {
+void Board::toggleFlag(int x, int y, int enableQuestionMarks) {
     if (x < 0 || x >= W || y < 0 || y >= H) return;
     Cell &c = grid[y * W + x];
     if (c.isRevealed) return;
 
-    if (c.isFlagged) {
-        c.isFlagged = 0;
-        flagsCount--;
+    if (enableQuestionMarks) {
+        /* Cycle à 3 états : Non-marqué -> Drapeau -> ? -> Non-marqué */
+        if (!c.isFlagged && !c.isQuestion) {
+            c.isFlagged = 1;
+            c.isQuestion = 0;
+            flagsCount++;
+        } else if (c.isFlagged) {
+            c.isFlagged = 0;
+            c.isQuestion = 1;
+            flagsCount--;
+        } else {
+            c.isFlagged = 0;
+            c.isQuestion = 0;
+        }
     } else {
-        c.isFlagged = 1;
-        flagsCount++;
+        /* Cycle standard à 2 états : Non-marqué <-> Drapeau */
+        if (c.isFlagged) {
+            c.isFlagged = 0;
+            c.isQuestion = 0;
+            flagsCount--;
+        } else {
+            c.isFlagged = 1;
+            c.isQuestion = 0;
+            flagsCount++;
+        }
     }
 }
 

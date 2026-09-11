@@ -400,7 +400,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     free(rowBuffer);
     cleardevice();
 
-        /* 8. Maintenant que l'écran est effacé, on injecte les vraies couleurs de palette au DAC VGA */
+    /* 8. Maintenant que l'écran est effacé, on injecte les vraies couleurs de palette au DAC VGA */
     if (readColors > 0) {
         int palIdx;
         for (palIdx = 0; palIdx < readColors; palIdx++) {

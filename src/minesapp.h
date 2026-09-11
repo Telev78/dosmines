@@ -22,6 +22,10 @@ class MinesApp {
     time_t gameStartTime;
     int elapsedSeconds;
     int emojiState;
+    int questionMarksEnabled;
+
+    /* Suivi de la case enfoncée sous la souris pour annulation au relâchement */
+    int pressedCellX, pressedCellY;
 
     void menu();
     void play(Difficulty d);
@@ -29,7 +33,7 @@ class MinesApp {
     void drawFullInterface();
     void drawHeader();
     void drawGrid();
-    void drawSingleCell(int gx, int gy);
+    void drawSingleCell(int gx, int gy, int isDepressed = 0);
 
 public:
     MinesApp();

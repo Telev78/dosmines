@@ -7,6 +7,7 @@ struct Cell {
     unsigned int isMine       : 1;
     unsigned int isRevealed   : 1;
     unsigned int isFlagged    : 1;
+    unsigned int isQuestion   : 1;
     unsigned int isExploded   : 1;
     unsigned int isFalseMine  : 1;
     unsigned int count        : 4;
@@ -27,7 +28,7 @@ public:
 
     void  setup(Difficulty d);
     int   reveal(int x, int y);
-    void  toggleFlag(int x, int y);
+    void  toggleFlag(int x, int y, int enableQuestionMarks = 1);
     void  chord(int x, int y, int &exploded);
     void  revealAllMines();
 
