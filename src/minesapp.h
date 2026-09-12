@@ -27,7 +27,7 @@ class MinesApp {
     /* Suivi de la case enfoncée sous la souris pour annulation au relâchement */
     int pressedCellX, pressedCellY;
 
-    void menu();
+    int  menu();
     void play(Difficulty d);
     void computeLayout();
     void drawFullInterface();

@@ -26,9 +26,7 @@ void MinesApp::run() {
         return;
     }
 
-    /* 3. Chargement de la sprite sheet :
-          Essai de chargement externe prioritaire (asset.bmp / asset/asset.bmp),
-          puis fallback transparent sur la sprite-sheet embarquée dans le binaire */
+    /* 3. Chargement de la sprite sheet */
     int loaded = v.loadSprites("asset.bmp") ||
                  v.loadSprites("asset\\asset.bmp") ||
                  v.loadSprites("asset/asset.bmp") ||
@@ -39,16 +37,22 @@ void MinesApp::run() {
         v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
     }
 
-    menu();
+    /* Boucle de jeu itérative (ZÉRO récursion) */
+    while (1) {
+        int choice = menu();
+        if (choice < 0) {
+            break; /* Echap dans le menu : quitter proprement */
+        }
+        play((Difficulty)choice);
+    }
 }
 
 void MinesApp::computeLayout() {
     boardWidthPx  = b.getW() * 16;
     boardHeightPx = b.getH() * 16;
 
-    /* Centrage de la grille dans l'écran 640x480 */
+    /* Centrage horizontal et vertical dans l'écran standard VGA 640x480 */
     gridX = (640 - boardWidthPx) / 2;
-    /* Pour la grille avancée (256px de haut), on laisse de la place pour le header */
     gridY = (480 - boardHeightPx) / 2 + 25;
 
     headerW = boardWidthPx;
@@ -139,11 +143,15 @@ void MinesApp::drawGrid() {
     }
 }
 
-void MinesApp::menu() {
+int MinesApp::menu() {
     state = STATE_MENU;
     cleardevice();
 
-    int panelX = 190, panelY = 110, panelW = 260, panelH = 260;
+    int screenH = 480;
+    int panelW = 260, panelH = 260;
+    int panelX = (640 - panelW) / 2;
+    int panelY = (screenH - panelH) / 2;
+    if (panelY < 10) panelY = 10;
 
     /* 1. Cadre de sélection avec fond plein texturé */
     v.drawPanel(panelX, panelY, panelW, panelH, 1);
@@ -160,35 +168,42 @@ void MinesApp::menu() {
     /* 3. Boutons en police standard avec centrage vertical */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 
-    v.drawPanel(210, 170, 220, 32, 1);
-    v.setTextColor();
-    outtextxy(230, 182, "1. DEBUTANT (9x9)");
+    int btnX = panelX + 20;
+    int btnW = 220;
+    int btn1Y = panelY + 60;
+    int btn2Y = panelY + 102;
+    int btn3Y = panelY + 144;
+    int optY  = panelY + 188;
 
-    v.drawPanel(210, 212, 220, 32, 1);
+    v.drawPanel(btnX, btn1Y, btnW, 32, 1);
     v.setTextColor();
-    outtextxy(230, 224, "2. INTERMEDIAIRE (16x16)");
+    outtextxy(btnX + 20, btn1Y + 12, "1. DEBUTANT (9x9)");
 
-    v.drawPanel(210, 254, 220, 32, 1);
+    v.drawPanel(btnX, btn2Y, btnW, 32, 1);
     v.setTextColor();
-    outtextxy(230, 266, "3. AVANCE (30x16)");
+    outtextxy(btnX + 20, btn2Y + 12, "2. INTERMEDIAIRE (16x16)");
+
+    v.drawPanel(btnX, btn3Y, btnW, 32, 1);
+    v.setTextColor();
+    outtextxy(btnX + 20, btn3Y + 12, "3. AVANCE (30x16)");
 
     /* 4. Bouton d'option toggle pour les marques (?) */
-    int optY = 298;
-    v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+    v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
     v.setTextColor();
     if (questionMarksEnabled) {
-        outtextxy(222, optY + 10, "[X] MARQUES (?)  (M)");
+        outtextxy(btnX + 12, optY + 10, "[X] MARQUES (?)  (M)");
     } else {
-        outtextxy(222, optY + 10, "[ ] MARQUES (?)  (M)");
+        outtextxy(btnX + 12, optY + 10, "[ ] MARQUES (?)  (M)");
     }
 
     /* 5. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
-    outtextxy(15, 460, "(C) Telev");
+    int credY = screenH - 20;
+    outtextxy(15, credY, "(C) Telev");
 
     const char* credRight = "Sprites: Black Squirrel";
-    outtextxy(625 - textwidth((char*)credRight), 460, (char*)credRight);
+    outtextxy(625 - textwidth((char*)credRight), credY, (char*)credRight);
 
     /* Rétablir la police par défaut pour le reste du jeu */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
@@ -201,29 +216,29 @@ void MinesApp::menu() {
     while (state == STATE_MENU) {
         if (kbhit()) {
             char ch = getch();
-            if (ch == '1') play(BEGINNER);
-            else if (ch == '2') play(INTERMEDIATE);
-            else if (ch == '3') play(ADVANCED);
+            if (ch == '1') return (int)BEGINNER;
+            else if (ch == '2') return (int)INTERMEDIATE;
+            else if (ch == '3') return (int)ADVANCED;
             else if (ch == 'm' || ch == 'M' || ch == '?') {
                 questionMarksEnabled = !questionMarksEnabled;
                 m.hide();
-                v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+                v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
                 v.setTextColor();
-                outtextxy(222, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
+                outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
                 m.show();
             }
-            else if (ch == 27) return; /* Echap pour quitter */
+            else if (ch == 27) return -1; /* Echap pour quitter */
         }
 
         m.getStatus(mx, my, mb);
 
         /* Détection Mouse-Down : on note quel bouton commence à être cliqué */
         if ((mb & 1) && !(lastB & 1)) {
-            if (mx >= 210 && mx <= 430) {
-                if (my >= 170 && my <= 202) pressedBtn = 1;
-                else if (my >= 212 && my <= 244) pressedBtn = 2;
-                else if (my >= 254 && my <= 286) pressedBtn = 3;
-                else if (my >= 298 && my <= 326) pressedBtn = 4;
+            if (mx >= btnX && mx <= btnX + btnW) {
+                if (my >= btn1Y && my <= btn1Y + 32) pressedBtn = 1;
+                else if (my >= btn2Y && my <= btn2Y + 32) pressedBtn = 2;
+                else if (my >= btn3Y && my <= btn3Y + 32) pressedBtn = 3;
+                else if (my >= optY  && my <= optY + 28)  pressedBtn = 4;
                 else pressedBtn = 0;
             } else {
                 pressedBtn = 0;
@@ -232,22 +247,19 @@ void MinesApp::menu() {
 
         /* Détection Mouse-Up : l'action ne s'exécute QUE si le curseur est TOUJOURS sur le même bouton */
         if (!(mb & 1) && (lastB & 1)) {
-            if (pressedBtn != 0 && (mx >= 210 && mx <= 430)) {
-                if (pressedBtn == 1 && (my >= 170 && my <= 202)) {
-                    play(BEGINNER);
-                    return;
-                } else if (pressedBtn == 2 && (my >= 212 && my <= 244)) {
-                    play(INTERMEDIATE);
-                    return;
-                } else if (pressedBtn == 3 && (my >= 254 && my <= 286)) {
-                    play(ADVANCED);
-                    return;
-                } else if (pressedBtn == 4 && (my >= 298 && my <= 326)) {
+            if (pressedBtn != 0 && (mx >= btnX && mx <= btnX + btnW)) {
+                if (pressedBtn == 1 && (my >= btn1Y && my <= btn1Y + 32)) {
+                    return (int)BEGINNER;
+                } else if (pressedBtn == 2 && (my >= btn2Y && my <= btn2Y + 32)) {
+                    return (int)INTERMEDIATE;
+                } else if (pressedBtn == 3 && (my >= btn3Y && my <= btn3Y + 32)) {
+                    return (int)ADVANCED;
+                } else if (pressedBtn == 4 && (my >= optY && my <= optY + 28)) {
                     questionMarksEnabled = !questionMarksEnabled;
                     m.hide();
-                    v.drawPanel(210, optY, 220, 28, questionMarksEnabled ? 0 : 1);
+                    v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
                     v.setTextColor();
-                    outtextxy(222, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
+                    outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
                     m.show();
                 }
             }
@@ -256,6 +268,7 @@ void MinesApp::menu() {
 
         lastB = mb;
     }
+    return -1;
 }
 
 void MinesApp::play(Difficulty d) {
@@ -300,8 +313,7 @@ void MinesApp::play(Difficulty d) {
             char k = getch();
             if (k == 27) { /* Echap */
                 m.hide();
-                menu();
-                return;
+                return; /* Quitte play() et retourne directement à la boucle itérative dans run() */
             }
         }
 
@@ -440,15 +452,25 @@ void MinesApp::play(Difficulty d) {
         if (kbhit()) {
             getch();
             m.hide();
-            menu();
-            return;
+            return; /* Quitte play() et retourne directement à la boucle itérative dans run() */
         }
         m.getStatus(mx, my, mb);
+
+        /* Détection Mouse-Down sur le smiley en fin de partie */
+        int onEmojiEnd = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
         if ((mb & 1) && !(lastB & 1)) {
-            if (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24) {
+            if (onEmojiEnd) {
+                pressedOnEmoji = 1;
+            }
+        }
+
+        /* Détection Mouse-Up sur le smiley pour relancer une partie */
+        if (!(mb & 1) && (lastB & 1)) {
+            if (pressedOnEmoji && onEmojiEnd) {
                 play(d);
                 return;
             }
+            pressedOnEmoji = 0;
         }
         lastB = mb;
     }
