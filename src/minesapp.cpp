@@ -254,7 +254,7 @@ int MinesApp::menu() {
                     m.hide();
                     v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
                     v.setTextColor();
-                    outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? "[X] MARQUES (?)  (M)" : "[ ] MARQUES (?)  (M)");
+                    outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char*)STR_MENU_MARKS_ON : (char*)STR_MENU_MARKS_OFF);
                     m.show();
                 }
             }
