@@ -28,6 +28,7 @@ class Video {
     void* numSprites[8];    /* 1..8 (16x16) */
     int spritesLoaded;
     int graphInitialized;
+    unsigned int isVGA : 1;
 
     /* Rôles de palette UI déterminés dynamiquement d'après les couleurs du BMP */
     int colHighlight; /* Lumière du biseau 3D (couleur la plus claire) */
@@ -58,6 +59,7 @@ public:
     void drawPanel(int x, int y, int w, int h, int out);
     void setTextColor();
     void setCreditColor();
+    unsigned int getIsVGA() const { return isVGA; }
 };
 
 #endif

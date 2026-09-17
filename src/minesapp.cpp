@@ -14,7 +14,8 @@ void MinesApp::run() {
         printf("\n=======================================================\n");
         printf(" ERREUR : Carte graphique VGA non detectee !\n");
         printf(" Ce jeu necessite une carte VGA et le mode 640x480x16.\n");
-        printf(" Les cartes EGA, CGA et Hercules ne sont pas supportees.\n");
+        printf(" ou une carte EGA et le mode 640x350x16.\n");
+        printf(" Les cartes CGA et Hercules ne sont pas supportees.\n");
         printf("=======================================================\n\n");
         return;
     }
@@ -27,11 +28,7 @@ void MinesApp::run() {
     }
 
     /* 3. Chargement de la sprite sheet */
-    int loaded = v.loadSprites("asset.bmp") ||
-                 v.loadSprites("asset\\asset.bmp") ||
-                 v.loadSprites("asset/asset.bmp") ||
-                 v.loadSprites("minesweepersprite.bmp") ||
-                 v.loadSprites("asset\\minesweepersprite.bmp");
+    int loaded = v.loadSprites("asset.bmp");
 
     if (!loaded) {
         v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
@@ -53,7 +50,7 @@ void MinesApp::computeLayout() {
 
     /* Centrage horizontal et vertical dans l'écran standard VGA 640x480 */
     gridX = (640 - boardWidthPx) / 2;
-    gridY = (480 - boardHeightPx) / 2 + 25;
+    gridY = ((v.getIsVGA() == 1 ? 480 : 350) - boardHeightPx) / 2 + 25;
 
     headerW = boardWidthPx;
     headerH = 37;
@@ -147,7 +144,7 @@ int MinesApp::menu() {
     state = STATE_MENU;
     cleardevice();
 
-    int screenH = 480;
+    int screenH = (v.getIsVGA() == 1 ? 480 : 350);
     int panelW = 260, panelH = 260;
     int panelX = (640 - panelW) / 2;
     int panelY = (screenH - panelH) / 2;

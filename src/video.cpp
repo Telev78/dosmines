@@ -72,7 +72,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
                             void* cellSprites[8], void* numSprites[8]);
 
 Video::Video() : spritesLoaded(0), graphInitialized(0),
-               colHighlight(15), colShadow(8), colSunkenBg(0), colSurface(7) {
+               colHighlight(15), colShadow(8), colSunkenBg(0), colSurface(7), isVGA(0) {
     int i;
     for (i = 0; i < 12; i++) digitSprites[i] = NULL;
     for (i = 0; i < 5; i++)  emojiSprites[i] = NULL;
@@ -85,9 +85,17 @@ int Video::init() {
     int gdriver = DETECT, gmode;
     detectgraph(&gdriver, &gmode);
 
-    /* Le jeu exige impérativement une carte VGA (640x480 16 couleurs, Mode 12h) */
-    if (gdriver != VGA) {
-        return 0;
+    /* Détection automatique de la carte graphique */
+    if (gdriver == VGA) {
+        gdriver = VGA;
+        gmode = VGAHI;      /* Mode 640x480 16 couleurs */
+        isVGA = 1;      
+    } else if (gdriver == EGA) {
+        gdriver = EGA;
+        gmode = EGAHI;      /* Mode 640x350 16 couleurs */
+        isVGA = 0;      
+    } else {
+        return 0; /* Carte non supportée (CGA, Hercules, etc.) */
     }
 
     /* 2. Enregistrement du driver BGI et des polices vectorielles liées */
@@ -95,8 +103,6 @@ int Video::init() {
     registerbgifont(sansserif_font);
     registerbgifont(small_font);
 
-    gdriver = VGA;
-    gmode   = VGAHI;
     initgraph(&gdriver, &gmode, "");
 
     int err = graphresult();
@@ -163,14 +169,18 @@ void Video::setDisplayEnable(int enable) {
 int Video::loadSprites(const char* filepath) {
     FILE* f = fopen(filepath, "rb");
     if (!f) return 0;
+    
+    if (isVGA)
+    {
+        /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+        setDisplayEnable(0);
 
-    /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
-    setDisplayEnable(0);
-
-    /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
-    int k;
-    for (k = 0; k < 16; k++) {
-        setVgaPaletteIndex(k, 0, 0, 0);
+        /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+    
+        int k;
+        for (k = 0; k < 16; k++) {
+            setVgaPaletteIndex(k, 0, 0, 0);
+        }
     }
 
     BMPStream stream(f);
@@ -178,9 +188,11 @@ int Video::loadSprites(const char* filepath) {
                                 digitSprites, emojiSprites, cellSprites, numSprites);
     fclose(f);
 
-    /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
-    setDisplayEnable(1);
-
+    if (isVGA)
+    {    
+        /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+        setDisplayEnable(1);
+    }
     if (res) spritesLoaded = 1;
     return res;
 }
@@ -188,22 +200,26 @@ int Video::loadSprites(const char* filepath) {
 int Video::loadSpritesFromMemory(const unsigned char far* data, long size) {
     if (!data || size <= 0L) return 0;
 
-    /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
-    setDisplayEnable(0);
+    if (isVGA)
+    {
+        /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+        setDisplayEnable(0);
 
-    /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
-    int k;
-    for (k = 0; k < 16; k++) {
-        setVgaPaletteIndex(k, 0, 0, 0);
+        /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+        int k;
+        for (k = 0; k < 16; k++) {
+            setVgaPaletteIndex(k, 0, 0, 0);
+        }
     }
-
     BMPStream stream(data, size);
     int res = decodeBMPInternal(this, stream, colHighlight, colShadow, colSurface, colSunkenBg,
                                 digitSprites, emojiSprites, cellSprites, numSprites);
 
-    /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
-    setDisplayEnable(1);
-
+    if (isVGA)
+    {                                
+        /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+        setDisplayEnable(1);
+    }
     if (res) spritesLoaded = 1;
     return res;
 }
@@ -403,16 +419,51 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     /* 8. Maintenant que l'écran est effacé, on injecte les vraies couleurs de palette au DAC VGA */
     if (readColors > 0) {
         int palIdx;
-        for (palIdx = 0; palIdx < readColors; palIdx++) {
-            vid->setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
+        if (vid->getIsVGA() == 1)
+        {
+            /* ========================================================
+               MODE VGA : Injection directe des couleurs 24-bits au DAC 
+               ======================================================== */
+            
+            for (palIdx = 0; palIdx < readColors; palIdx++) {
+                vid->setVgaPaletteIndex(palIdx, bmpPalette[palIdx].rgbRed, bmpPalette[palIdx].rgbGreen, bmpPalette[palIdx].rgbBlue);
+            }
+            /* Si le BMP a moins de 16 couleurs (ex: 14), restaurer le blanc standard pour l'index 15 */
+            /* indispensable pour que le pilote souris DOS (qui utilise l'index 15 pour le blanc) ne devienne pas noir */
+            for (palIdx = readColors; palIdx < 16; palIdx++) {
+                vid->setVgaPaletteIndex(palIdx, 255, 255, 255);
+            }
         }
-        /* Si le BMP a moins de 16 couleurs (ex: 14), restaurer le blanc standard pour l'index 15 */
-        /* indispensable pour que le pilote souris DOS (qui utilise l'index 15 pour le blanc) ne devienne pas noir */
-        for (palIdx = readColors; palIdx < 16; palIdx++) {
-            vid->setVgaPaletteIndex(palIdx, 255, 255, 255);
+        else {
+            /* ========================================================
+               MODE EGA : Conversion RGB 24-bits -> Palette EGA 6-bits (64 couleurs)
+               ======================================================== */
+            for (palIdx = 0; palIdx < readColors; palIdx++) {
+                int r8 = bmpPalette[palIdx].rgbRed;
+                int g8 = bmpPalette[palIdx].rgbGreen;
+                int b8 = bmpPalette[palIdx].rgbBlue;
+                
+                /* Division brute par 85 : sépare parfaitement les nuances 0, 128, 192 et 255 */
+                int vR = r8 / 85; 
+                int vG = g8 / 85;
+                int vB = b8 / 85;
+                
+                /* Extraction des signaux primaires et secondaires */
+                int R = (vR >> 1) & 1;
+                int r = vR & 1;
+                int G = (vG >> 1) & 1;
+                int g = vG & 1;
+                int B = (vB >> 1) & 1;
+                int b = vB & 1;
+                
+                /* Assemblage de l'octet EGA (rrggbb) */
+                int egaColor = (r << 5) | (g << 4) | (b << 3) | (R << 2) | (G << 1) | B;
+                
+                /* Reprogrammation du registre d'attribut */
+                setpalette(palIdx, egaColor);
+            }
         }
     }
-
     return 1;
 }
 
