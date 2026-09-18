@@ -6,11 +6,13 @@
 #include "mouse.h"
 #include "video.h"
 #include "board.h"
+#include "scores.h"
 
 class MinesApp {
     Video v;
     Mouse m;
     Board b;
+    ScoreManager scores;
     GameState state;
 
     int gridX, gridY;
@@ -29,6 +31,8 @@ class MinesApp {
 
     int  menu();
     void play(Difficulty d);
+    void showHighScores();
+    void promptNewRecord(Difficulty d, int seconds);
     void computeLayout();
     void drawFullInterface();
     void drawHeader();

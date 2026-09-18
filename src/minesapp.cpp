@@ -144,7 +144,7 @@ int MinesApp::menu() {
     cleardevice();
 
     int screenH = (v.getIsVGA() == 1 ? 480 : 350);
-    int panelW = 260, panelH = 260;
+    int panelW = 260, panelH = 296;
     int panelX = (640 - panelW) / 2;
     int panelY = (screenH - panelH) / 2;
     if (panelY < 10) panelY = 10;
@@ -165,10 +165,11 @@ int MinesApp::menu() {
 
     int btnX = panelX + 20;
     int btnW = 220;
-    int btn1Y = panelY + 60;
-    int btn2Y = panelY + 102;
-    int btn3Y = panelY + 144;
-    int optY  = panelY + 188;
+    int btn1Y = panelY + 56;
+    int btn2Y = panelY + 94;
+    int btn3Y = panelY + 132;
+    int optY  = panelY + 172;
+    int scrY  = panelY + 208;
 
     v.drawPanel(btnX, btn1Y, btnW, 32, 1);
     v.setTextColor();
@@ -191,7 +192,12 @@ int MinesApp::menu() {
         outtextxy(btnX + 12, optY + 10, (char*)STR_MENU_MARKS_OFF);
     }
 
-    /* 5. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
+    /* 5. Bouton "MEILLEURS TEMPS" */
+    v.drawPanel(btnX, scrY, btnW, 28, 1);
+    v.setTextColor();
+    outtextxy(btnX + 24, scrY + 10, (char*)STR_MENU_SCORES);
+
+    /* 6. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
     int credY = screenH - 20;
@@ -206,7 +212,7 @@ int MinesApp::menu() {
     m.show();
     int mx, my, mb;
     int lastB = 0;
-    int pressedBtn = 0; /* 0=aucun, 1=debutant, 2=inter, 3=avance, 4=option */
+    int pressedBtn = 0; /* 0=aucun, 1=debutant, 2=inter, 3=avance, 4=option, 5=scores */
 
     while (state == STATE_MENU) {
         if (kbhit()) {
@@ -214,6 +220,11 @@ int MinesApp::menu() {
             if (ch == '1') return (int)BEGINNER;
             else if (ch == '2') return (int)INTERMEDIATE;
             else if (ch == '3') return (int)ADVANCED;
+            else if (ch == 't' || ch == 'T' || ch == 's' || ch == 'S') {
+                m.hide();
+                showHighScores();
+                return menu();
+            }
             else if (ch == 'm' || ch == 'M' || ch == '?') {
                 questionMarksEnabled = !questionMarksEnabled;
                 m.hide();
@@ -234,6 +245,7 @@ int MinesApp::menu() {
                 else if (my >= btn2Y && my <= btn2Y + 32) pressedBtn = 2;
                 else if (my >= btn3Y && my <= btn3Y + 32) pressedBtn = 3;
                 else if (my >= optY  && my <= optY + 28)  pressedBtn = 4;
+                else if (my >= scrY  && my <= scrY + 28)  pressedBtn = 5;
                 else pressedBtn = 0;
             } else {
                 pressedBtn = 0;
@@ -256,6 +268,10 @@ int MinesApp::menu() {
                     v.setTextColor();
                     outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char*)STR_MENU_MARKS_ON : (char*)STR_MENU_MARKS_OFF);
                     m.show();
+                } else if (pressedBtn == 5 && (my >= scrY && my <= scrY + 28)) {
+                    m.hide();
+                    showHighScores();
+                    return menu();
                 }
             }
             pressedBtn = 0;
@@ -504,9 +520,21 @@ void MinesApp::play(Difficulty d) {
     /* Fin de partie : Écran fixe */
     m.hide();
     if (state == STATE_LOST) {
-        emojiState = EMOJI_LOST; b.revealAllMines(); drawGrid(); v.drawEmoji(emojiX, emojiY, emojiState);
+        emojiState = EMOJI_LOST;
+        b.revealAllMines();
+        drawGrid();
+        v.drawEmoji(emojiX, emojiY, emojiState);
     } else if (state == STATE_WON) {
-        emojiState = EMOJI_WON; v.drawCounter(mineCounterX, counterY, 0); v.drawEmoji(emojiX, emojiY, emojiState);
+        emojiState = EMOJI_WON;
+        v.drawCounter(mineCounterX, counterY, 0);
+        v.drawEmoji(emojiX, emojiY, emojiState);
+
+        /* Vérification d'un nouveau record */
+        if (scores.isNewRecord(d, elapsedSeconds)) {
+            promptNewRecord(d, elapsedSeconds);
+            showHighScores();
+            drawFullInterface();
+        }
     }
     m.show();
     pressedOnEmoji = 0;
@@ -525,13 +553,184 @@ void MinesApp::play(Difficulty d) {
             emojiState = targetEmojiEnd; m.hide(); v.drawEmoji(emojiX, emojiY, emojiState); m.show();
         }
 
-        if ((mb & 1) && !(lastB & 1) && onEmojiEnd) pressedOnEmoji = 1;
+        if ((mb & 1) && !(lastB & 1)) {
+            if (onEmojiEnd) pressedOnEmoji = 1;
+        }
 
         if (!(mb & 1) && (lastB & 1)) {
             if (pressedOnEmoji && onEmojiEnd) { pressedOnEmoji = 0; play(d); return; }
             pressedOnEmoji = 0;
         }
         lastB = mb;
+    }
+}
+
+void MinesApp::showHighScores() {
+    int screenH = (v.getIsVGA() == 1 ? 480 : 350);
+    int pW = 320, pH = 210;
+    int pX = (640 - pW) / 2;
+    int pY = (screenH - pH) / 2;
+
+    v.drawPanel(pX, pY, pW, pH, 1);
+    v.setTextColor();
+
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
+    const char* hTitle = STR_MENU_SCORES_TITLE;
+    int tx = pX + (pW - textwidth((char*)hTitle)) / 2;
+    outtextxy(tx, pY + 12, (char*)hTitle);
+
+    settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
+    const char* diffNames[3] = { STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED };
+    char lineBuf[64];
+
+    for (int i = 0; i < 3; i++) {
+        const HighScore& s = scores.get((Difficulty)i);
+        sprintf(lineBuf, "%-14s: %3d s  %-10s", diffNames[i], s.time, s.name);
+        outtextxy(pX + 24, pY + 60 + i * 28, lineBuf);
+    }
+
+    int btnResetX = pX + 20, btnResetY = pY + 155, btnResetW = 130, btnH = 30;
+    int btnOkX = pX + 175, btnOkY = pY + 155, btnOkW = 120;
+
+    v.drawPanel(btnResetX, btnResetY, btnResetW, btnH, 1);
+    v.setTextColor();
+    outtextxy(btnResetX + 10, btnResetY + 11, STR_MENU_SCORES_RESET);
+
+    v.drawPanel(btnOkX, btnOkY, btnOkW, btnH, 1);
+    v.setTextColor();
+    outtextxy(btnOkX + 48, btnOkY + 11, STR_MENU_SCORES_OK);
+
+    m.show();
+    int mx, my, mb, lastB = 0;
+    int pressed = 0;
+
+    while (1) {
+        if (kbhit()) {
+            char ch = getch();
+            if (ch == 27 || ch == 13 || ch == 'o' || ch == 'O') break;
+            if (ch == 'r' || ch == 'R') {
+                scores.reset();
+                scores.save();
+                m.hide();
+                showHighScores();
+                return;
+            }
+        }
+
+        m.getStatus(mx, my, mb);
+
+        if ((mb & 1) && !(lastB & 1)) {
+            if (my >= btnResetY && my <= btnResetY + btnH) {
+                if (mx >= btnResetX && mx <= btnResetX + btnResetW) pressed = 1;
+                else if (mx >= btnOkX && mx <= btnOkX + btnOkW) pressed = 2;
+            }
+        }
+
+        if (!(mb & 1) && (lastB & 1)) {
+            if (pressed == 1 && (mx >= btnResetX && mx <= btnResetX + btnResetW && my >= btnResetY && my <= btnResetY + btnH)) {
+                scores.reset();
+                scores.save();
+                m.hide();
+                showHighScores();
+                return;
+            } else if (pressed == 2 && (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnH)) {
+                break;
+            }
+            pressed = 0;
+        }
+
+        lastB = mb;
+    }
+    m.hide();
+}
+
+void MinesApp::promptNewRecord(Difficulty d, int seconds) {
+    int screenH = (v.getIsVGA() == 1 ? 480 : 350);
+    int pW = 340, pH = 190;
+    int pX = (640 - pW) / 2;
+    int pY = (screenH - pH) / 2;
+
+    v.drawPanel(pX, pY, pW, pH, 1);
+    v.setTextColor();
+
+    settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
+    const char* hTitle = STR_MENU_SCORES_NEWRECORD1;
+    int tx = pX + (pW - textwidth((char*)hTitle)) / 2;
+    outtextxy(tx, pY + 12, (char*)hTitle);
+
+    settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
+    char buf[64];
+    const char* diffNames[3] = { STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED };
+    sprintf(buf, STR_MENU_SCORES_NEWRECORD2, diffNames[(int)d], seconds);
+    outtextxy(pX + (pW - textwidth(buf)) / 2, pY + 50, buf);
+
+    outtextxy(pX + 25, pY + 76, STR_MENU_SCORES_NAME);
+
+    int editX = pX + 25, editY = pY + 96, editW = 290, editH = 24;
+    v.drawSunkenRect(editX, editY, editW, editH);
+
+    int btnOkX = pX + (pW - 100) / 2, btnOkY = pY + 138, btnOkW = 100, btnOkH = 28;
+    v.drawPanel(btnOkX, btnOkY, btnOkW, btnOkH, 1);
+    v.setTextColor();
+    outtextxy(btnOkX + 40, btnOkY + 10, STR_MENU_SCORES_OK);
+
+    char name[16];
+    name[0] = '\0';
+    int len = 0;
+
+    m.show();
+    int mx, my, mb, lastB = 0;
+    int pressedOk = 0;
+
+    while (1) {
+        if (kbhit()) {
+            char ch = getch();
+            if (ch == 13) {
+                break;
+            } else if (ch == 27) {
+                break;
+            } else if (ch == 8) {
+                if (len > 0) {
+                    len--;
+                    name[len] = '\0';
+                }
+            } else if (ch >= 32 && ch <= 126 && len < 15) {
+                name[len++] = ch;
+                name[len] = '\0';
+            }
+
+            m.hide();
+            v.drawSunkenRect(editX, editY, editW, editH);
+            setcolor(WHITE);
+            char dispBuf[20];
+            sprintf(dispBuf, "%s_", name);
+            outtextxy(editX + 8, editY + 8, dispBuf);
+            m.show();
+        }
+
+        m.getStatus(mx, my, mb);
+
+        if ((mb & 1) && !(lastB & 1)) {
+            if (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH) {
+                pressedOk = 1;
+            }
+        }
+
+        if (!(mb & 1) && (lastB & 1)) {
+            if (pressedOk && mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH) {
+                break;
+            }
+            pressedOk = 0;
+        }
+
+        lastB = mb;
+    }
+
+    m.hide();
+    if (len > 0) {
+        scores.update(d, name, seconds);
+    } else {
+        scores.update(d, STR_MENU_SCORES_DEFAULT, seconds);
     }
 }
 

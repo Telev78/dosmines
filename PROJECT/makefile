@@ -27,6 +27,7 @@ BUILD_OBJS = $(BUILD_DIR)\main.obj \
              $(BUILD_DIR)\video.obj \
              $(BUILD_DIR)\mouse.obj \
              $(BUILD_DIR)\assetdef.obj \
+			 $(BUILD_DIR)\scores.obj \
              $(BUILD_DIR)\egavga.obj \
              $(BUILD_DIR)\sans.obj \
              $(BUILD_DIR)\litt.obj
