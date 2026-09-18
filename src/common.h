@@ -35,7 +35,7 @@ const char* const STR_MENU_SCORES_NEWRECORD2    = "Nouveau record %s : %d s";
 const char* const STR_MENU_SCORES_DEFAULT       = "Anonyme";
 const char* const STR_MENU_SCORES_NAME          = "Entrez votre nom :";
 
-/* Messages d'erreur syst√®me au d√©marrage */
+/* Messages d'erreur systäme au dÇmarrage */
 const char* const STR_ERR_GRAPH_LINE1           = "=======================================================";
 const char* const STR_ERR_GRAPH_LINE2           = " ERREUR : Carte graphique EGA ou VGA non detectee !";
 const char* const STR_ERR_GRAPH_LINE3           = " Ce jeu necessite une carte EGA (640x350) ou VGA (640x480).";

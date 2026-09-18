@@ -27,7 +27,7 @@ def generate_asset_sources(bmp_path="asset/asset.bmp",
     print(f"Lecture de '{bmp_path}' ({total_bytes} octets)...")
 
     # 1. Génération du header (.h)
-    with open(out_header, "w") as f:
+    with open(out_header, "w", encoding="cp850") as f:
         f.write("/* Fichier généré automatiquement par bin2c.py - NE PAS MODIFIER */\n")
         f.write("#ifndef ASSETDEF_H\n")
         f.write("#define ASSETDEF_H\n\n")
@@ -36,7 +36,7 @@ def generate_asset_sources(bmp_path="asset/asset.bmp",
         f.write("#endif\n")
 
     # 2. Génération du source C++ (.cpp)
-    with open(out_source, "w") as f:
+    with open(out_source, "w", encoding="cp850") as f:
         f.write("/* Fichier généré automatiquement par bin2c.py - NE PAS MODIFIER */\n")
         f.write('#include "assetdef.h"\n\n')
         f.write(f"const unsigned char far default_asset_bmp[{total_bytes}] = {{\n")

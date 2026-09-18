@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 /* Constantes pour les indices de sprites */
-/* Cellules (8 √©tats) */
+/* Cellules (8 Çtats) */
 #define SPR_CELL_UNREVEALED 0
 #define SPR_CELL_EMPTY      1
 #define SPR_CELL_FLAG       2
@@ -14,7 +14,7 @@
 #define SPR_CELL_EXPLODED   6
 #define SPR_CELL_FALSE_MINE 7
 
-/* Emojis (5 √©tats) */
+/* Emojis (5 Çtats) */
 #define EMOJI_NORMAL   0
 #define EMOJI_CLICKED  1
 #define EMOJI_SURPRISE 2
@@ -30,10 +30,10 @@ class Video {
     int graphInitialized;
     unsigned int isVGA : 1;
 
-    /* R√¥les de palette UI d√©termin√©s dynamiquement d'apr√®s les couleurs du BMP */
-    int colHighlight; /* Lumi√®re du biseau 3D (couleur la plus claire) */
-    int colShadow;    /* Ombre du biseau 3D (couleur sombre interm√©diaire) */
-    int colSunkenBg;  /* Fond creus√© des compteurs LED (couleur la plus sombre) */
+    /* Rìles de palette UI dÇterminÇs dynamiquement d'apräs les couleurs du BMP */
+    int colHighlight; /* Lumiäre du biseau 3D (couleur la plus claire) */
+    int colShadow;    /* Ombre du biseau 3D (couleur sombre intermÇdiaire) */
+    int colSunkenBg;  /* Fond creusÇ des compteurs LED (couleur la plus sombre) */
     int colSurface;   /* Fond moyen de l'interface */
 
 public:

@@ -81,11 +81,11 @@ Video::Video() : spritesLoaded(0), graphInitialized(0),
 }
 
 int Video::init() {
-    /* 1. D√©tection mat√©rielle du sous-syst√®me graphique */
+    /* 1. DÇtection matÇrielle du sous-systäme graphique */
     int gdriver = DETECT, gmode;
     detectgraph(&gdriver, &gmode);
 
-    /* D√©tection automatique de la carte graphique */
+    /* DÇtection automatique de la carte graphique */
     if (gdriver == VGA) {
         gdriver = VGA;
         gmode = VGAHI;      /* Mode 640x480 16 couleurs */
@@ -95,10 +95,10 @@ int Video::init() {
         gmode = EGAHI;      /* Mode 640x350 16 couleurs */
         isVGA = 0;      
     } else {
-        return 0; /* Carte non support√©e (CGA, Hercules, etc.) */
+        return 0; /* Carte non supportÇe (CGA, Hercules, etc.) */
     }
 
-    /* 2. Enregistrement du driver BGI et des polices vectorielles li√©es */
+    /* 2. Enregistrement du driver BGI et des polices vectorielles liÇes */
     registerbgidriver(EGAVGA_driver);
     registerbgifont(sansserif_font);
     registerbgifont(small_font);
@@ -172,10 +172,10 @@ int Video::loadSprites(const char* filepath) {
     
     if (isVGA)
     {
-        /* 1. Extinction mat√©rielle (s√©quenceur VGA pour vraie machine / 86Box) */
+        /* 1. Extinction matÇrielle (sÇquenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
-        /* 2. Extinction de la palette DAC (tous les index √† noir pour DOSBox) */
+        /* 2. Extinction de la palette DAC (tous les index Ö noir pour DOSBox) */
     
         int k;
         for (k = 0; k < 16; k++) {
@@ -190,7 +190,7 @@ int Video::loadSprites(const char* filepath) {
 
     if (isVGA)
     {    
-        /* 3. Rallumage mat√©riel du signal vid√©o une fois l'√©cran nettoy√© */
+        /* 3. Rallumage matÇriel du signal vidÇo une fois l'Çcran nettoyÇ */
         setDisplayEnable(1);
     }
     if (res) spritesLoaded = 1;
@@ -202,10 +202,10 @@ int Video::loadSpritesFromMemory(const unsigned char far* data, long size) {
 
     if (isVGA)
     {
-        /* 1. Extinction mat√©rielle (s√©quenceur VGA pour vraie machine / 86Box) */
+        /* 1. Extinction matÇrielle (sÇquenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
-        /* 2. Extinction de la palette DAC (tous les index √† noir pour DOSBox) */
+        /* 2. Extinction de la palette DAC (tous les index Ö noir pour DOSBox) */
         int k;
         for (k = 0; k < 16; k++) {
             setVgaPaletteIndex(k, 0, 0, 0);
@@ -217,7 +217,7 @@ int Video::loadSpritesFromMemory(const unsigned char far* data, long size) {
 
     if (isVGA)
     {                                
-        /* 3. Rallumage mat√©riel du signal vid√©o une fois l'√©cran nettoy√© */
+        /* 3. Rallumage matÇriel du signal vidÇo une fois l'Çcran nettoyÇ */
         setDisplayEnable(1);
     }
     if (res) spritesLoaded = 1;
@@ -240,7 +240,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         return 0;
     }
 
-    /* 1. Lecture de la palette du BMP (stock√©e localement, PAS encore inject√©e au DAC pour garder l'√©cran noir) */
+    /* 1. Lecture de la palette du BMP (stockÇe localement, PAS encore injectÇe au DAC pour garder l'Çcran noir) */
     int numColors = (int)bih.biClrUsed;
     if (numColors == 0 || numColors > 16) {
         numColors = 16; /* Format standard BMP 4-bits */
@@ -260,7 +260,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         return 0;
     }
 
-    /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-d√©voil√©e */
+    /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-dÇvoilÇe */
     int cellRowTop    = imgH - 1 - 50;
     int cellRowBottom = imgH - 1 - 65;
     int cellRowMid    = imgH - 1 - 58;
@@ -277,7 +277,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     stream.read(rowBuffer, rowStride);
     colSurface = (rowBuffer[8 / 2] >> 4);
 
-    /* 3. Fond creus√© des compteurs : couleur la plus sombre de la palette */
+    /* 3. Fond creusÇ des compteurs : couleur la plus sombre de la palette */
     long minLum = 30000L;
     colSunkenBg = 0;
     if (readColors > 0) {
@@ -293,13 +293,13 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         }
     }
 
-    /* Coordonn√©es de dessin temporaire sur l'√©cran d'initialisation (0,0) */
+    /* CoordonnÇes de dessin temporaire sur l'Çcran d'initialisation (0,0) */
     int tempX = 0;
     int tempY = 0;
     int i, px, py;
 
-    /* 4. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (s√©parateur 1px) */
-    /* Ordre s√©quentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
+    /* 4. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (sÇparateur 1px) */
+    /* Ordre sÇquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++) {
         int srcX = 1 + i * 14;
         int srcY = 1;
@@ -328,7 +328,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     }
 
     /* 5. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
-    /* Normal, Cliqu√©, Surpris, Victoire, D√©faite */
+    /* Normal, CliquÇ, Surpris, Victoire, DÇfaite */
     for (i = 0; i < 5; i++) {
         int srcX = 1 + i * 25;
         int srcY = 25;
@@ -357,7 +357,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     }
 
     /* 6. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
-    /* Non-r√©v√©l√©e, Vide, Drapeau, ?, ? enfonc√©, Mine, Mine rouge, Fausse mine */
+    /* Non-rÇvÇlÇe, Vide, Drapeau, ?, ? enfoncÇ, Mine, Mine rouge, Fausse mine */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
         int srcY = 50;
@@ -385,7 +385,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
         }
     }
 
-    /* 7. Ligne 4 (Chiffres de proximit√© 1 √† 8, Y=67) : 8 sprites de 16x16 pixels */
+    /* 7. Ligne 4 (Chiffres de proximitÇ 1 Ö 8, Y=67) : 8 sprites de 16x16 pixels */
     for (i = 0; i < 8; i++) {
         int srcX = 1 + i * 17;
         int srcY = 67;
@@ -416,7 +416,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
     free(rowBuffer);
     cleardevice();
 
-    /* 8. Maintenant que l'√©cran est effac√©, on injecte les vraies couleurs de palette au DAC VGA */
+    /* 8. Maintenant que l'Çcran est effacÇ, on injecte les vraies couleurs de palette au DAC VGA */
     if (readColors > 0) {
         int palIdx;
         if (vid->getIsVGA() == 1)
@@ -443,7 +443,7 @@ static int decodeBMPInternal(Video* vid, BMPStream &stream,
                 int g8 = bmpPalette[palIdx].rgbGreen;
                 int b8 = bmpPalette[palIdx].rgbBlue;
                 
-                /* Division brute par 85 : s√©pare parfaitement les nuances 0, 128, 192 et 255 */
+                /* Division brute par 85 : sÇpare parfaitement les nuances 0, 128, 192 et 255 */
                 int vR = r8 / 85; 
                 int vG = g8 / 85;
                 int vB = b8 / 85;
@@ -499,7 +499,7 @@ void Video::drawDigit(int x, int y, int digitIdx) {
     }
 }
 
-/* Affichage d'un compteur √† 3 digits (format Windows : 000 √† 999 ou n√©gatif) */
+/* Affichage d'un compteur Ö 3 digits (format Windows : 000 Ö 999 ou nÇgatif) */
 void Video::drawCounter(int x, int y, int value) {
     if (value < -99) value = -99;
     if (value > 999) value = 999;
@@ -563,8 +563,8 @@ void Video::setTextColor() {
 
 void Video::setCreditColor() {
     /* Si la palette est bicolore (noir et blanc), colShadow est noir (0), ce qui se */
-    /* confondrait avec le fond d'√©cran noir. On bascule alors sur colHighlight (blanc). */
-    /* En mode couleur, colShadow (gris fonc√©) offre un contraste doux et feutr√© sur fond noir. */
+    /* confondrait avec le fond d'Çcran noir. On bascule alors sur colHighlight (blanc). */
+    /* En mode couleur, colShadow (gris foncÇ) offre un contraste doux et feutrÇ sur fond noir. */
     if (colShadow == colSunkenBg) {
         setcolor(colHighlight);
     } else {
