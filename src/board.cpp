@@ -46,20 +46,34 @@ void Board::placeMines(int safeX, int safeY) {
         }
     }
 
+    Cell* currentCell = grid; // Pointeur glissant qui commence au début de la grille
+
     for (int y = 0; y < H; y++) {
         for (int x = 0; x < W; x++) {
-            if (grid[y * W + x].isMine) continue;
+            // Accès direct sans multiplication
+            if (currentCell->isMine) {
+                currentCell++; // On passe à la case suivante pour le prochain tour
+                continue;
+            }
+            
             int c = 0;
             for (int dy = -1; dy <= 1; dy++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (nx >= 0 && nx < W && ny >= 0 && ny < H && grid[ny * W + nx].isMine) {
-                        c++;
+                int ny = y + dy;
+                if (ny >= 0 && ny < H) {
+                    // On se positionne au début de la ligne du voisin
+                    Cell* neighborCell = &grid[ny * W + (x - 1)]; 
+                    
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int nx = x + dx;
+                        if (nx >= 0 && nx < W && neighborCell->isMine) {
+                            c++;
+                        }
+                        neighborCell++; // Avance d'une case à chaque itération de dx
                     }
                 }
             }
-            grid[y * W + x].count = c;
+            currentCell->count = c;
+            currentCell++; // On avance notre pointeur principal d'une case
         }
     }
 }
@@ -131,37 +145,49 @@ void Board::toggleFlag(int x, int y, int enableQuestionMarks) {
 void Board::chord(int x, int y, int &exploded) {
     exploded = 0;
     if (x < 0 || x >= W || y < 0 || y >= H) return;
-    Cell &c = grid[y * W + x];
-    if (!c.isRevealed || c.count == 0) return;
+    
+    // Utilisation d'un pointeur direct pour la case centrale
+    Cell* centerCell = &grid[y * W + x];
+    if (!centerCell->isRevealed || centerCell->count == 0) return;
 
-    /* Compter les drapeaux adjacents */
+    /* 1. Compter les drapeaux adjacents avec pointeur */
     int adjacentFlags = 0;
     for (int dy = -1; dy <= 1; dy++) {
-        for (int dx = -1; dx <= 1; dx++) {
-            int nx = x + dx;
-            int ny = y + dy;
-            if (nx >= 0 && nx < W && ny >= 0 && ny < H && grid[ny * W + nx].isFlagged) {
-                adjacentFlags++;
+        int ny = y + dy;
+        if (ny >= 0 && ny < H) {
+            Cell* neighbor = &grid[ny * W + (x - 1)];
+            for (int dx = -1; dx <= 1; dx++) {
+                int nx = x + dx;
+                if (nx >= 0 && nx < W && neighbor->isFlagged) {
+                    adjacentFlags++;
+                }
+                neighbor++; // Évite de recalculer l'index
             }
         }
     }
 
-    if (adjacentFlags == c.count) {
+    /* 2. Révéler les cases si le compte est bon */
+    if (adjacentFlags == centerCell->count) {
         for (int dy2 = -1; dy2 <= 1; dy2++) {
-            for (int dx2 = -1; dx2 <= 1; dx2++) {
-                int nx = x + dx2;
-                int ny = y + dy2;
-                if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
-                    if (!grid[ny * W + nx].isRevealed && !grid[ny * W + nx].isFlagged) {
-                        if (reveal(nx, ny) == 0) {
-                            exploded = 1;
+            int ny = y + dy2;
+            if (ny >= 0 && ny < H) {
+                Cell* neighbor = &grid[ny * W + (x - 1)];
+                for (int dx2 = -1; dx2 <= 1; dx2++) {
+                    int nx = x + dx2;
+                    if (nx >= 0 && nx < W) {
+                        if (!neighbor->isRevealed && !neighbor->isFlagged) {
+                            if (reveal(nx, ny) == 0) {
+                                exploded = 1;
+                            }
                         }
                     }
+                    neighbor++; // Évite de recalculer l'index
                 }
             }
         }
     }
 }
+
 
 void Board::revealAllMines() {
     for (int y = 0; y < H; y++) {

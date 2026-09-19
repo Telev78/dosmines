@@ -300,9 +300,12 @@ void MinesApp::play(Difficulty d) {
     time_t lastTick = 0;
     int pressedCellX = -1, pressedCellY = -1;   // Case ancrée au Mouse-Down (Clic gauche)
     int rightPressedX = -1, rightPressedY = -1; // Case ancrée au Mouse-Down (Clic droit)
-    int chordAnchorX = -1, chordAnchorY = -1;   // Case ancrée au Mouse-Down (Chord)
     int isChording = 0;                         // 1 si le mode Chord est actif
     int pressedOnEmoji = 0;
+    int lastChordX = -1;
+    int lastChordY = -1;
+    int lastLeftX = -1;
+    int lastLeftY = -1;
 
     while (state == STATE_PLAYING) {
         /* -------------------------------------------------------------
@@ -380,8 +383,6 @@ void MinesApp::play(Difficulty d) {
             else if (onGrid) {
                 if ((mb & 1) && (mb & 2)) {
                     isChording = 1;
-                    chordAnchorX = gx;
-                    chordAnchorY = gy;
                 } else if (mb & 1) {
                     pressedCellX = gx;
                     pressedCellY = gy;
@@ -398,61 +399,102 @@ void MinesApp::play(Difficulty d) {
                 m.show();
             }
             isChording = 1;
-            chordAnchorX = gx;
-            chordAnchorY = gy;
             pressedCellX = -1;
             pressedCellY = -1;
         }
 
         /* =========================================================================
-           2. GESTION DU SURVOL DYNAMIQUE (Focus Anti-clignotement)
-           ========================================================================= */
+        2. GESTION DU SURVOL DYNAMIQUE (Focus Anti-clignotement)
+        ========================================================================= */
         if (isChording) {
-            if (onGrid && gx == chordAnchorX && gy == chordAnchorY) {
-                if (pressedCellX != 1) { 
+            if (onGrid) {
+                // OPTIMISATION : On ne redessine que si la souris a changé de case
+                if (lastChordX != gx || lastChordY != gy) {
+                    
                     m.hide();
+                    // 1. Relever les anciennes cases enfoncées
+                    if (lastChordX != -1 && lastChordY != -1) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            for (int dx = -1; dx <= 1; dx++) {
+                                int nx = lastChordX + dx;
+                                int ny = lastChordY + dy;
+                                if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                                    drawSingleCell(nx, ny, 0);
+                                }
+                            }
+                        }
+                    }
+
+                    // 2. Enfoncer les 9 nouvelles cases autour de la souris actuelle (gx, gy)
                     for (int dy = -1; dy <= 1; dy++) {
                         for (int dx = -1; dx <= 1; dx++) {
-                            int nx = chordAnchorX + dx;
-                            int ny = chordAnchorY + dy;
+                            int nx = gx + dx;
+                            int ny = gy + dy;
                             if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
                                 Cell &adj = b.get(nx, ny);
-                                if (!adj.isRevealed && !adj.isFlagged) drawSingleCell(nx, ny, 1);
+                                if (!adj.isRevealed && !adj.isFlagged) {
+                                    drawSingleCell(nx, ny, 1);
+                                }
                             }
                         }
                     }
                     m.show();
-                    pressedCellX = 1;
+                    
+                    // On met à jour la position courante du Chord
+                    lastChordX = gx;
+                    lastChordY = gy;
                 }
             } else {
-                if (pressedCellX == 1) {
+                // Si la souris sort de la grille, on relève tout
+                if (lastChordX != -1 && lastChordY != -1) {
                     m.hide();
                     for (int dy = -1; dy <= 1; dy++) {
                         for (int dx = -1; dx <= 1; dx++) {
-                            int nx = chordAnchorX + dx;
-                            int ny = chordAnchorY + dy;
-                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) drawSingleCell(nx, ny, 0);
+                            int nx = lastChordX + dx;
+                            int ny = lastChordY + dy;
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                                drawSingleCell(nx, ny, 0);
+                            }
                         }
                     }
                     m.show();
-                    pressedCellX = 0;
+                    
+                    lastChordX = -1;
+                    lastChordY = -1;
                 }
             }
-        } 
+        }
         else if (pressedCellX >= 0 && pressedCellY >= 0) {
-            if (onGrid && gx == pressedCellX && gy == pressedCellY) {
-                if (rightPressedX != 1) {
+            // Si la souris est sur la grille et que le joueur maintient le clic gauche enfoncé
+            if (onGrid) {
+                // OPTIMISATION : On ne redessine que si la souris a changé de case
+                if (lastLeftX != gx || lastLeftY != gy) {
+                    
                     m.hide();
-                    drawSingleCell(pressedCellX, pressedCellY, 1);
+                    // 1. Relever l'ancienne case qui avait été enfoncée au cycle d'avant
+                    if (lastLeftX != -1 && lastLeftY != -1) {
+                        drawSingleCell(lastLeftX, lastLeftY, 0);
+                    }
+
+                    // 2. Enfoncer visuellement la NOUVELLE case actuellement survolée
+                    Cell &c = b.get(gx, gy);
+                    if (!c.isRevealed && !c.isFlagged) {
+                        drawSingleCell(gx, gy, 1); // 1 = enfoncé
+                    }
                     m.show();
-                    rightPressedX = 1;
+
+                    // On mémorise la position actuelle
+                    lastLeftX = gx;
+                    lastLeftY = gy;
                 }
             } else {
-                if (rightPressedX == 1) {
+                // Si la souris sort de la grille pendant le clic maintenu, on relève la dernière case
+                if (lastLeftX != -1 && lastLeftY != -1) {
                     m.hide();
-                    drawSingleCell(pressedCellX, pressedCellY, 0);
+                    drawSingleCell(lastLeftX, lastLeftY, 0);
                     m.show();
-                    rightPressedX = 0;
+                    lastLeftX = -1;
+                    lastLeftY = -1;
                 }
             }
         }
@@ -462,56 +504,107 @@ void MinesApp::play(Difficulty d) {
            ========================================================================= */
         if (isChording && (!(mb & 1) || !(mb & 2))) {
             m.hide();
-            if (onGrid && gx == chordAnchorX && gy == chordAnchorY) {
+            if (onGrid && gx == lastChordX && gy == lastChordY) {
                 int exploded = 0;
-                b.chord(chordAnchorX, chordAnchorY, exploded);
+                b.chord(lastChordX, lastChordY, exploded); // Exécution à l'emplacement actuel !
                 if (exploded) state = STATE_LOST;
                 else if (b.checkVictory()) state = STATE_WON;
                 drawGrid();
                 v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
             } else {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dx = -1; dx <= 1; dx++) {
-                        int nx = chordAnchorX + dx;
-                        int ny = chordAnchorY + dy;
-                        if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) drawSingleCell(nx, ny, 0);
+                // Si on relâche en dehors de la case active, on annule et on relève le tout
+                if (lastChordX != -1 && lastChordY != -1) {
+                    for (int dy = -1; dy <= 1; dy++) {
+                        for (int dx = -1; dx <= 1; dx++) {
+                            int nx = lastChordX + dx;
+                            int ny = lastChordY + dy;
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                                drawSingleCell(nx, ny, 0);
+                            }
+                        }
                     }
                 }
             }
-            isChording = 0; chordAnchorX = -1; chordAnchorY = -1; pressedCellX = -1; rightPressedX = -1;
+            isChording = 0; 
+            pressedCellX = -1; 
+            rightPressedX = -1;
+            lastChordX = -1; 
+            lastChordY = -1;
             m.show();
         }
         else if (!(mb & 1) && (lastB & 1) && !isChording) {
             if (pressedOnEmoji && onEmoji) {
-                m.hide(); b.setup(d); emojiState = EMOJI_NORMAL; elapsedSeconds = 0; gameStartTime = 0; drawFullInterface(); m.show();
+                m.hide(); b.setup(d); emojiState = EMOJI_NORMAL; elapsedSeconds = 0; gameStartTime = 0;
+                drawFullInterface(); m.show();
                 pressedOnEmoji = 0; pressedCellX = -1; rightPressedX = -1;
             }
             else if (pressedCellX >= 0 && pressedCellY >= 0) {
-                if (onGrid && gx == pressedCellX && gy == pressedCellY) {
+                // MODIFICATION : On valide l'ouverture sur la case actuellement ciblée par le survol dynamique (lastLeftX/Y)
+                // et non plus sur la case initiale du Mouse-Down (pressedCellX/Y)
+                if (onGrid && gx == lastLeftX && gy == lastLeftY) {
+                    
                     m.hide();
-                    int res = b.reveal(gx, gy);
-                    if (res == 0) state = STATE_LOST;
-                    else if (b.checkVictory()) state = STATE_WON;
-                    drawGrid();
+                    int res = b.reveal(lastLeftX, lastLeftY); // Ouvre la case survolée !
+                    
+                    if (res == 0) {
+                        state = STATE_LOST;
+                    } 
+                    else if (b.checkVictory()) {
+                        state = STATE_WON;
+                        drawGrid();
+                    } 
+                    else {
+                        // Rendu optimisé à la demande
+                        Cell &clickedCell = b.get(lastLeftX, lastLeftY);
+                        if (clickedCell.count > 0) {
+                            drawSingleCell(lastLeftX, lastLeftY); 
+                        } else {
+                            for (int ty = 0; ty < b.getH(); ty++) {
+                                for (int tx = 0; tx < b.getW(); tx++) {
+                                    if (b.get(tx, ty).isRevealed) {
+                                        drawSingleCell(tx, ty);
+                                    }
+                                }
+                            }
+                        }
+                    }
                     m.show();
                 } else {
-                    m.hide(); drawSingleCell(pressedCellX, pressedCellY, 0); m.show();
+                    // Si on relâche en dehors de la case active (annulation du glissement), on relève l'ancien bouton
+                    if (lastLeftX != -1 && lastLeftY != -1) {
+                        m.hide(); 
+                        drawSingleCell(lastLeftX, lastLeftY, 0); 
+                        m.show();
+                    }
                 }
-                pressedCellX = -1; pressedCellY = -1; rightPressedX = -1;
+                // Nettoyage complet de tous les états de mémorisation du clic
+                pressedCellX = -1; 
+                pressedCellY = -1; 
+                rightPressedX = -1;
+                lastLeftX = -1;
+                lastLeftY = -1;
             }
             pressedOnEmoji = 0;
         }
         else if (!(mb & 2) && (lastB & 2) && !isChording) {
             if (rightPressedX >= 0 && rightPressedY >= 0 && pressedCellX == -1) {
                 if (onGrid && gx == rightPressedX && gy == rightPressedY) {
+                    
                     m.hide();
+                    
+                    // 1. On modifie l'état logique de la case (Drapeau / ? / Vide)
                     b.toggleFlag(gx, gy, questionMarksEnabled);
+                    
                     drawSingleCell(gx, gy);
+                    
+                    // 2. On met à jour le compteur de mines en haut à gauche
                     v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
+                    
                     m.show();
                 }
             }
-            rightPressedX = -1; rightPressedY = -1;
+            rightPressedX = -1; 
+            rightPressedY = -1;
         }
 
         lastB = mb;
@@ -521,10 +614,33 @@ void MinesApp::play(Difficulty d) {
     m.hide();
     if (state == STATE_LOST) {
         emojiState = EMOJI_LOST;
-        b.revealAllMines();
-        drawGrid();
+        
+        m.hide(); // On cache la souris une seule fois avant la grosse mise à jour
+        
+        // Au lieu de modifier la grille en mémoire puis de TOUT redessiner,
+        // on parcourt la grille et on ne dessine QUE les mines qui apparaissent
+        for (int y = 0; y < b.getH(); y++) {
+            for (int x = 0; x < b.getW(); x++) {
+                Cell &c = b.get(x, y);
+                
+                // Si c'est une mine non découverte, ou un faux drapeau
+                if ((c.isMine && !c.isFlagged) || (!c.isMine && c.isFlagged)) {
+                    // On met à jour l'état logique de la case
+                    if (c.isMine && !c.isExploded) {
+                        c.isRevealed = 1;
+                    } else if (!c.isMine && c.isFlagged) {
+                        c.isFalseMine = 1;
+                    }
+                    // On ne redessine QUE cette case précise sur l'écran VGA !
+                    drawSingleCell(x, y);
+                }
+            }
+        }
+        
         v.drawEmoji(emojiX, emojiY, emojiState);
-    } else if (state == STATE_WON) {
+        m.show(); // On réaffiche la souris
+    }
+    else if (state == STATE_WON) {
         emojiState = EMOJI_WON;
         v.drawCounter(mineCounterX, counterY, 0);
         v.drawEmoji(emojiX, emojiY, emojiState);
