@@ -26,7 +26,7 @@ class MinesApp {
     int emojiState;
     int questionMarksEnabled;
 
-    /* Suivi de la case enfonc‚e sous la souris pour annulation au relƒchement */
+    /* Suivi de la case enfoncÃ©e sous la souris pour annulation au relÃ¢chement */
     int pressedCellX, pressedCellY;
 
     int  menu();

@@ -8,10 +8,10 @@ INCLUDES = -I$(BC_PATH)\INCLUDE -I$(SRC_DIR)
 LIBS     = -L$(BC_PATH)\LIB
 BGI      = $(BC_PATH)\BGI
 
-# Indique … Borland Make o— chercher les fichiers sources .cpp
+# Indique Ã  Borland Make oÃ¹ chercher les fichiers sources .cpp
 .path.cpp = $(SRC_DIR)
 
-# Par d‚faut, si DEBUG n'est pas d‚fini, on est en Release
+# Par dÃ©faut, si DEBUG n'est pas dÃ©fini, on est en Release
 !ifdef DEBUG
 CFLAGS = -ml -v -y -O- $(INCLUDES)    # Model Large, Debug info, Pas d'optimisation
 !else
@@ -20,7 +20,7 @@ CFLAGS = -ml -v- -O2 -vi -2 -y- $(INCLUDES) # Model Large, Pas de debug info, Op
 
 TARGET = $(BUILD_DIR)\dosmines.exe
 
-# Fichiers objets g‚n‚r‚s dans le dossier build
+# Fichiers objets gÃ©nÃ©rÃ©s dans le dossier build
 BUILD_OBJS = $(BUILD_DIR)\main.obj \
              $(BUILD_DIR)\minesapp.obj \
              $(BUILD_DIR)\board.obj \
@@ -32,7 +32,7 @@ BUILD_OBJS = $(BUILD_DIR)\main.obj \
              $(BUILD_DIR)\sans.obj \
              $(BUILD_DIR)\litt.obj
 
-# 1. RÔGLE DE LIAISON FINALE
+# 1. RÃˆGLE DE LIAISON FINALE
 $(TARGET): $(BUILD_OBJS)
 	bcc $(CFLAGS) $(LIBS) -e$(TARGET) @&&|
 $(BUILD_OBJS) graphics.lib
@@ -47,7 +47,7 @@ $(BUILD_DIR)\sans.obj: $(BGI)\SANS.CHR
 $(BUILD_DIR)\litt.obj: $(BGI)\LITT.CHR
 	$(BGI)\bgiobj $(BGI)\LITT.CHR $(BUILD_DIR)\litt.obj _small_font
 
-# 2. RÔGLE GNRIQUE DE COMPILATION (.cpp -> .obj dans BUILD_DIR)
+# 2. RÃˆGLE GÃ‰NÃ‰RIQUE DE COMPILATION (.cpp -> .obj dans BUILD_DIR)
 .cpp.obj:
 	bcc $(CFLAGS) -n$(BUILD_DIR) -c $<
 

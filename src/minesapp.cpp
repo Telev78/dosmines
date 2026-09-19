@@ -9,7 +9,7 @@ MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL), questionMark
 }
 
 void MinesApp::run() {
-     /* 1. VÇrification matÇrielle VGA / EGA */
+     /* 1. V√©rification mat√©rielle VGA / EGA */
     if (!v.init()) {
         printf("\n%s\n",  STR_ERR_GRAPH_LINE1);
         printf("%s\n",    STR_ERR_GRAPH_LINE2);
@@ -33,7 +33,7 @@ void MinesApp::run() {
         v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
     }
 
-    /* Boucle de jeu itÇrative (ZêRO rÇcursion) */
+    /* Boucle de jeu it√©rative (Z√âRO r√©cursion) */
     while (1) {
         int choice = menu();
         if (choice < 0) {
@@ -47,7 +47,7 @@ void MinesApp::computeLayout() {
     boardWidthPx  = b.getW() * 16;
     boardHeightPx = b.getH() * 16;
 
-    /* Centrage horizontal et vertical dans l'Çcran standard VGA 640x480 */
+    /* Centrage horizontal et vertical dans l'√©cran standard VGA 640x480 */
     gridX = (640 - boardWidthPx) / 2;
     gridY = ((v.getIsVGA() == 1 ? 480 : 350) - boardHeightPx) / 2 + 25;
 
@@ -70,10 +70,10 @@ void MinesApp::drawFullInterface() {
     /* Cadre principal englobant (look Windows 3.1) avec fond opaque */
     v.drawPanel(headerX - 6, headerY - 6, headerW + 12, (gridY + boardHeightPx + 6) - (headerY - 6), 1);
 
-    /* En-tàte */
+    /* En-t√™te */
     v.drawPanel(headerX, headerY, headerW, headerH, 0);
 
-    /* Grille en relief creusÇ encadrant pile les cellules de gridX Ö gridX + boardWidthPx - 1 */
+    /* Grille en relief creus√© encadrant pile les cellules de gridX √† gridX + boardWidthPx - 1 */
     v.drawBezel(gridX - 1, gridY - 1, boardWidthPx + 1, boardHeightPx + 1, 0);
 
     drawHeader();
@@ -87,7 +87,7 @@ void MinesApp::drawHeader() {
     /* Bouton Emoji */
     v.drawEmoji(emojiX, emojiY, emojiState);
 
-    /* Compteur Chronomätre */
+    /* Compteur Chronom√®tre */
     v.drawCounter(timerCounterX, counterY, elapsedSeconds);
 }
 
@@ -149,11 +149,11 @@ int MinesApp::menu() {
     int panelY = (screenH - panelH) / 2;
     if (panelY < 10) panelY = 10;
 
-    /* 1. Cadre de sÇlection avec fond plein texturÇ */
+    /* 1. Cadre de s√©lection avec fond plein textur√© */
     v.drawPanel(panelX, panelY, panelW, panelH, 1);
     v.setTextColor();
 
-    /* 2. Titre "DEMINEUR" en police vectorielle Sans-Serif, plus grand et parfaitement centrÇ */
+    /* 2. Titre "DEMINEUR" en police vectorielle Sans-Serif, plus grand et parfaitement centr√© */
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 3);
     int titleX = panelX + (panelW - textwidth((char*)STR_MENU_TITLE)) / 2;
     outtextxy(titleX, panelY + 15, (char*)STR_MENU_TITLE);
@@ -197,7 +197,7 @@ int MinesApp::menu() {
     v.setTextColor();
     outtextxy(btnX + 24, scrY + 10, (char*)STR_MENU_SCORES);
 
-    /* 6. Mentions de crÇdits en petite police (SMALL_FONT), discrätes dans les coins infÇrieurs */
+    /* 6. Mentions de cr√©dits en petite police (SMALL_FONT), discr√®tes dans les coins inf√©rieurs */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
     int credY = screenH - 20;
@@ -206,7 +206,7 @@ int MinesApp::menu() {
     outtextxy(625 - textwidth((char*)STR_CREDIT_RIGHT), credY, (char*)STR_CREDIT_RIGHT);
 
 
-    /* RÇtablir la police par dÇfaut pour le reste du jeu */
+    /* R√©tablir la police par d√©faut pour le reste du jeu */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
 
     m.show();
@@ -238,7 +238,7 @@ int MinesApp::menu() {
 
         m.getStatus(mx, my, mb);
 
-        /* DÇtection Mouse-Down : on note quel bouton commence Ö àtre cliquÇ */
+        /* D√©tection Mouse-Down : on note quel bouton commence √† √™tre cliqu√© */
         if ((mb & 1) && !(lastB & 1)) {
             if (mx >= btnX && mx <= btnX + btnW) {
                 if (my >= btn1Y && my <= btn1Y + 32) pressedBtn = 1;
@@ -252,7 +252,7 @@ int MinesApp::menu() {
             }
         }
 
-        /* DÇtection Mouse-Up : l'action ne s'exÇcute QUE si le curseur est TOUJOURS sur le màme bouton */
+        /* D√©tection Mouse-Up : l'action ne s'ex√©cute QUE si le curseur est TOUJOURS sur le m√™me bouton */
         if (!(mb & 1) && (lastB & 1)) {
             if (pressedBtn != 0 && (mx >= btnX && mx <= btnX + btnW)) {
                 if (pressedBtn == 1 && (my >= btn1Y && my <= btn1Y + 32)) {
@@ -298,15 +298,15 @@ void MinesApp::play(Difficulty d) {
     int mx, my, mb;
     int lastB = 0;
     time_t lastTick = 0;
-    int pressedCellX = -1, pressedCellY = -1;   // Case ancrÇe au Mouse-Down (Clic gauche)
-    int rightPressedX = -1, rightPressedY = -1; // Case ancrÇe au Mouse-Down (Clic droit)
-    int chordAnchorX = -1, chordAnchorY = -1;   // Case ancrÇe au Mouse-Down (Chord)
+    int pressedCellX = -1, pressedCellY = -1;   // Case ancr√©e au Mouse-Down (Clic gauche)
+    int rightPressedX = -1, rightPressedY = -1; // Case ancr√©e au Mouse-Down (Clic droit)
+    int chordAnchorX = -1, chordAnchorY = -1;   // Case ancr√©e au Mouse-Down (Chord)
     int isChording = 0;                         // 1 si le mode Chord est actif
     int pressedOnEmoji = 0;
 
     while (state == STATE_PLAYING) {
         /* -------------------------------------------------------------
-           Gestion du chronomätre
+           Gestion du chronom√®tre
            ------------------------------------------------------------- */
         if (b.isStarted()) {
             time_t now = time(NULL);
@@ -336,7 +336,7 @@ void MinesApp::play(Difficulty d) {
         }
 
         /* -------------------------------------------------------------
-           Lecture de l'Çtat de la souris
+           Lecture de l'√©tat de la souris
            ------------------------------------------------------------- */
         m.getStatus(mx, my, mb);
 
@@ -346,18 +346,18 @@ void MinesApp::play(Difficulty d) {
         int onEmoji = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
 
         /* -------------------------------------------------------------
-           Animation dynamique du visage de l'Çmoji (En cours de partie)
+           Animation dynamique du visage de l'√©moji (En cours de partie)
            ------------------------------------------------------------- */
         int targetEmoji = EMOJI_NORMAL;
         if (onEmoji && (mb & 1)) {
-            /* L'Çmoji s'enfonce si on le survole avec le clic gauche */
+            /* L'√©moji s'enfonce si on le survole avec le clic gauche */
             targetEmoji = EMOJI_CLICKED;
         } else if (pressedOnEmoji == 1) {
-            /* Si le clic a commencÇ sur l'Çmoji mais qu'on glisse en dehors, 
+            /* Si le clic a commenc√© sur l'√©moji mais qu'on glisse en dehors, 
                il redevient simplement NORMAL (pas de surprise) */
             targetEmoji = EMOJI_NORMAL;
         } else if (isChording || (onGrid && (mb & 1))) {
-            /* Le mode surprise ne s'active QUE si le clic gauche/chord a commencÇ sur la grille */
+            /* Le mode surprise ne s'active QUE si le clic gauche/chord a commenc√© sur la grille */
             targetEmoji = EMOJI_SURPRISE;
         } else {
             targetEmoji = EMOJI_NORMAL;
@@ -371,7 +371,7 @@ void MinesApp::play(Difficulty d) {
         }
 
         /* =========================================================================
-           1. GESTION DU MOUSE-DOWN (DÇtection initiale du clic)
+           1. GESTION DU MOUSE-DOWN (D√©tection initiale du clic)
            ========================================================================= */
         if (((mb & 1) || (mb & 2)) && !(lastB & 1 || lastB & 2)) {
             if (onEmoji && (mb & 1)) {
@@ -458,7 +458,7 @@ void MinesApp::play(Difficulty d) {
         }
 
         /* =========================================================================
-           3. GESTION DU MOUSE-UP (RelÉchement et exÇcution)
+           3. GESTION DU MOUSE-UP (Rel√¢chement et ex√©cution)
            ========================================================================= */
         if (isChording && (!(mb & 1) || !(mb & 2))) {
             m.hide();
@@ -517,7 +517,7 @@ void MinesApp::play(Difficulty d) {
         lastB = mb;
     }
 
-    /* Fin de partie : êcran fixe */
+    /* Fin de partie : √âcran fixe */
     m.hide();
     if (state == STATE_LOST) {
         emojiState = EMOJI_LOST;
@@ -529,7 +529,7 @@ void MinesApp::play(Difficulty d) {
         v.drawCounter(mineCounterX, counterY, 0);
         v.drawEmoji(emojiX, emojiY, emojiState);
 
-        /* VÇrification d'un nouveau record */
+        /* V√©rification d'un nouveau record */
         if (scores.isNewRecord(d, elapsedSeconds)) {
             promptNewRecord(d, elapsedSeconds);
             showHighScores();
@@ -539,7 +539,7 @@ void MinesApp::play(Difficulty d) {
     m.show();
     pressedOnEmoji = 0;
 
-    /* Boucle finale d'attente avec comportement poussoir de l'Çmoji */
+    /* Boucle finale d'attente avec comportement poussoir de l'√©moji */
     while (state != STATE_PLAYING) {
         if (kbhit()) { getch(); m.hide(); return; }
         

@@ -64,7 +64,7 @@ void Board::placeMines(int safeX, int safeY) {
     }
 }
 
-/* Retourne : 1 si succŠs, 0 si mine explos‚e (perdu), -1 si action ignor‚e (drapeau ou d‚j… r‚v‚l‚e) */
+/* Retourne : 1 si succÃ¨s, 0 si mine explosÃ©e (perdu), -1 si action ignorÃ©e (drapeau ou dÃ©jÃ  rÃ©vÃ©lÃ©e) */
 int Board::reveal(int x, int y) {
     if (x < 0 || x >= W || y < 0 || y >= H) return -1;
     Cell &c = grid[y * W + x];
@@ -101,7 +101,7 @@ void Board::toggleFlag(int x, int y, int enableQuestionMarks) {
     if (c.isRevealed) return;
 
     if (enableQuestionMarks) {
-        /* Cycle … 3 ‚tats : Non-marqu‚ -> Drapeau -> ? -> Non-marqu‚ */
+        /* Cycle Ã  3 Ã©tats : Non-marquÃ© -> Drapeau -> ? -> Non-marquÃ© */
         if (!c.isFlagged && !c.isQuestion) {
             c.isFlagged = 1;
             c.isQuestion = 0;
@@ -115,7 +115,7 @@ void Board::toggleFlag(int x, int y, int enableQuestionMarks) {
             c.isQuestion = 0;
         }
     } else {
-        /* Cycle standard … 2 ‚tats : Non-marqu‚ <-> Drapeau */
+        /* Cycle standard Ã  2 Ã©tats : Non-marquÃ© <-> Drapeau */
         if (c.isFlagged) {
             c.isFlagged = 0;
             c.isQuestion = 0;

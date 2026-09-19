@@ -1,4 +1,4 @@
-/* Fichier g‚n‚r‚ automatiquement par bin2c.py - NE PAS MODIFIER */
+/* Fichier gÃ©nÃ©rÃ© automatiquement par bin2c.py - NE PAS MODIFIER */
 #include "assetdef.h"
 
 const unsigned char far default_asset_bmp[7502] = {
