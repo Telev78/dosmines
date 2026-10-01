@@ -8,7 +8,8 @@
 #include "board.h"
 #include "scores.h"
 
-class MinesApp {
+class MinesApp
+{
     Video v;
     Mouse m;
     Board b;
@@ -29,14 +30,16 @@ class MinesApp {
     /* Suivi de la case enfoncée sous la souris pour annulation au relâchement */
     int pressedCellX, pressedCellY;
 
-    int  menu();
+    void renderDirtyCells();
+    int menu();
     void play(Difficulty d);
     void showHighScores();
     void promptNewRecord(Difficulty d, int seconds);
     void computeLayout();
-    void drawFullInterface();
+    void drawFullInterface(int isInitial = 0);
     void drawHeader();
     void drawGrid();
+    void drawEmptyGrid();
     void drawSingleCell(int gx, int gy, int isDepressed = 0);
 
 public:

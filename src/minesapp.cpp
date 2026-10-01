@@ -5,22 +5,26 @@
 #include "minesapp.h"
 #include "assetdef.h"
 
-MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL), questionMarksEnabled(1) {
+MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL), questionMarksEnabled(1)
+{
 }
 
-void MinesApp::run() {
-     /* 1. Vérification matérielle VGA / EGA */
-    if (!v.init()) {
-        printf("\n%s\n",  STR_ERR_GRAPH_LINE1);
-        printf("%s\n",    STR_ERR_GRAPH_LINE2);
-        printf("%s\n",    STR_ERR_GRAPH_LINE3);
-        printf("%s\n",    STR_ERR_GRAPH_LINE4);
-        printf("%s\n\n",  STR_ERR_GRAPH_LINE1);
+void MinesApp::run()
+{
+    /* 1. Vérification matérielle VGA / EGA */
+    if (!v.init())
+    {
+        printf("\n%s\n", STR_ERR_GRAPH_LINE1);
+        printf("%s\n", STR_ERR_GRAPH_LINE2);
+        printf("%s\n", STR_ERR_GRAPH_LINE3);
+        printf("%s\n", STR_ERR_GRAPH_LINE4);
+        printf("%s\n\n", STR_ERR_GRAPH_LINE1);
         return;
     }
 
     /* 2. Initialisation de la souris */
-    if (!m.init()) {
+    if (!m.init())
+    {
         closegraph();
         printf("\n%s\n", STR_ERR_MOUSE);
         return;
@@ -29,22 +33,26 @@ void MinesApp::run() {
     /* 3. Chargement de la sprite sheet */
     int loaded = v.loadSprites("asset.bmp");
 
-    if (!loaded) {
+    if (!loaded)
+    {
         v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
     }
 
     /* Boucle de jeu itérative (ZÉRO récursion) */
-    while (1) {
+    while (1)
+    {
         int choice = menu();
-        if (choice < 0) {
+        if (choice < 0)
+        {
             break; /* Echap dans le menu : quitter proprement */
         }
         play((Difficulty)choice);
     }
 }
 
-void MinesApp::computeLayout() {
-    boardWidthPx  = b.getW() * 16;
+void MinesApp::computeLayout()
+{
+    boardWidthPx = b.getW() * 16;
     boardHeightPx = b.getH() * 16;
 
     /* Centrage horizontal et vertical dans l'écran standard VGA 640x480 */
@@ -59,12 +67,13 @@ void MinesApp::computeLayout() {
     emojiX = headerX + (headerW - 24) / 2;
     emojiY = headerY + (headerH - 24) / 2;
 
-    mineCounterX  = headerX + 6;
+    mineCounterX = headerX + 6;
     timerCounterX = headerX + headerW - (13 * 3) - 6;
-    counterY      = headerY + (headerH - 23) / 2;
+    counterY = headerY + (headerH - 23) / 2;
 }
 
-void MinesApp::drawFullInterface() {
+void MinesApp::drawFullInterface(int isInitial)
+{
     cleardevice();
 
     /* Cadre principal englobant (look Windows 3.1) avec fond opaque */
@@ -77,10 +86,20 @@ void MinesApp::drawFullInterface() {
     v.drawBezel(gridX - 1, gridY - 1, boardWidthPx + 1, boardHeightPx + 1, 0);
 
     drawHeader();
-    drawGrid();
+
+    // Si c'est le début d'une partie, on utilise le tracé ultra-rapide
+    if (isInitial)
+    {
+        drawEmptyGrid();
+    }
+    else
+    {
+        drawGrid();
+    }
 }
 
-void MinesApp::drawHeader() {
+void MinesApp::drawHeader()
+{
     /* Compteur de mines restantes */
     v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
 
@@ -91,55 +110,90 @@ void MinesApp::drawHeader() {
     v.drawCounter(timerCounterX, counterY, elapsedSeconds);
 }
 
-void MinesApp::drawSingleCell(int gx, int gy, int isDepressed) {
+void MinesApp::drawSingleCell(int gx, int gy, int isDepressed)
+{
     Cell &c = b.get(gx, gy);
     int px = gridX + gx * 16;
     int py = gridY + gy * 16;
 
-    if (!c.isRevealed) {
-        if (c.isFlagged) {
-            if (c.isFalseMine) {
+    if (!c.isRevealed)
+    {
+        if (c.isFlagged)
+        {
+            if (c.isFalseMine)
+            {
                 v.drawCell(px, py, SPR_CELL_FALSE_MINE);
-            } else {
+            }
+            else
+            {
                 v.drawCell(px, py, SPR_CELL_FLAG);
             }
-        } else if (c.isQuestion) {
-            if (isDepressed) {
+        }
+        else if (c.isQuestion)
+        {
+            if (isDepressed)
+            {
                 v.drawCell(px, py, SPR_CELL_Q_CLICKED);
-            } else {
+            }
+            else
+            {
                 v.drawCell(px, py, SPR_CELL_QUESTION);
             }
-        } else {
-            if (isDepressed) {
+        }
+        else
+        {
+            if (isDepressed)
+            {
                 v.drawCell(px, py, SPR_CELL_EMPTY);
-            } else {
+            }
+            else
+            {
                 v.drawCell(px, py, SPR_CELL_UNREVEALED);
             }
         }
-    } else {
-        if (c.isMine) {
-            if (c.isExploded) {
+    }
+    else
+    {
+        if (c.isMine)
+        {
+            if (c.isExploded)
+            {
                 v.drawCell(px, py, SPR_CELL_EXPLODED);
-            } else {
+            }
+            else
+            {
                 v.drawCell(px, py, SPR_CELL_MINE);
             }
-        } else if (c.count > 0) {
+        }
+        else if (c.count > 0)
+        {
             v.drawNumberCell(px, py, c.count);
-        } else {
+        }
+        else
+        {
             v.drawCell(px, py, SPR_CELL_EMPTY);
         }
     }
 }
 
-void MinesApp::drawGrid() {
-    for (int y = 0; y < b.getH(); y++) {
-        for (int x = 0; x < b.getW(); x++) {
+void MinesApp::drawEmptyGrid()
+{
+    v.drawUnrevealedGrid(gridX, gridY, b.getW(), b.getH());
+}
+
+void MinesApp::drawGrid()
+{
+    for (int y = 0; y < b.getH(); y++)
+    {
+        for (int x = 0; x < b.getW(); x++)
+        {
             drawSingleCell(x, y);
         }
     }
 }
 
-int MinesApp::menu() {
+int MinesApp::menu()
+{
     state = STATE_MENU;
     cleardevice();
 
@@ -147,7 +201,8 @@ int MinesApp::menu() {
     int panelW = 260, panelH = 296;
     int panelX = (640 - panelW) / 2;
     int panelY = (screenH - panelH) / 2;
-    if (panelY < 10) panelY = 10;
+    if (panelY < 10)
+        panelY = 10;
 
     /* 1. Cadre de sélection avec fond plein texturé */
     v.drawPanel(panelX, panelY, panelW, panelH, 1);
@@ -155,10 +210,10 @@ int MinesApp::menu() {
 
     /* 2. Titre "DEMINEUR" en police vectorielle Sans-Serif, plus grand et parfaitement centré */
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 3);
-    int titleX = panelX + (panelW - textwidth((char*)STR_MENU_TITLE)) / 2;
-    outtextxy(titleX, panelY + 15, (char*)STR_MENU_TITLE);
-    outtextxy(titleX + 1, panelY + 15, (char*)STR_MENU_TITLE);
-    outtextxy(titleX, panelY + 16, (char*)STR_MENU_TITLE);
+    int titleX = panelX + (panelW - textwidth((char *)STR_MENU_TITLE)) / 2;
+    outtextxy(titleX, panelY + 15, (char *)STR_MENU_TITLE);
+    outtextxy(titleX + 1, panelY + 15, (char *)STR_MENU_TITLE);
+    outtextxy(titleX, panelY + 16, (char *)STR_MENU_TITLE);
 
     /* 3. Boutons en police standard avec centrage vertical */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
@@ -168,43 +223,45 @@ int MinesApp::menu() {
     int btn1Y = panelY + 56;
     int btn2Y = panelY + 94;
     int btn3Y = panelY + 132;
-    int optY  = panelY + 172;
-    int scrY  = panelY + 208;
+    int optY = panelY + 172;
+    int scrY = panelY + 208;
 
     v.drawPanel(btnX, btn1Y, btnW, 32, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn1Y + 12, (char*)STR_MENU_BEGINNER);
+    outtextxy(btnX + 20, btn1Y + 12, (char *)STR_MENU_BEGINNER);
 
     v.drawPanel(btnX, btn2Y, btnW, 32, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn2Y + 12, (char*)STR_MENU_INTERMED);
+    outtextxy(btnX + 20, btn2Y + 12, (char *)STR_MENU_INTERMED);
 
     v.drawPanel(btnX, btn3Y, btnW, 32, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn3Y + 12, (char*)STR_MENU_ADVANCED);
+    outtextxy(btnX + 20, btn3Y + 12, (char *)STR_MENU_ADVANCED);
 
     /* 4. Bouton d'option toggle pour les marques (?) */
     v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
     v.setTextColor();
-    if (questionMarksEnabled) {
-        outtextxy(btnX + 12, optY + 10, (char*)STR_MENU_MARKS_ON);
-    } else {
-        outtextxy(btnX + 12, optY + 10, (char*)STR_MENU_MARKS_OFF);
+    if (questionMarksEnabled)
+    {
+        outtextxy(btnX + 12, optY + 10, (char *)STR_MENU_MARKS_ON);
+    }
+    else
+    {
+        outtextxy(btnX + 12, optY + 10, (char *)STR_MENU_MARKS_OFF);
     }
 
     /* 5. Bouton "MEILLEURS TEMPS" */
     v.drawPanel(btnX, scrY, btnW, 28, 1);
     v.setTextColor();
-    outtextxy(btnX + 24, scrY + 10, (char*)STR_MENU_SCORES);
+    outtextxy(btnX + 24, scrY + 10, (char *)STR_MENU_SCORES);
 
     /* 6. Mentions de crédits en petite police (SMALL_FONT), discrètes dans les coins inférieurs */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
     int credY = screenH - 20;
-    outtextxy(15, credY, (char*)STR_CREDIT_LEFT);
+    outtextxy(15, credY, (char *)STR_CREDIT_LEFT);
 
-    outtextxy(625 - textwidth((char*)STR_CREDIT_RIGHT), credY, (char*)STR_CREDIT_RIGHT);
-
+    outtextxy(625 - textwidth((char *)STR_CREDIT_RIGHT), credY, (char *)STR_CREDIT_RIGHT);
 
     /* Rétablir la police par défaut pour le reste du jeu */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
@@ -214,61 +271,90 @@ int MinesApp::menu() {
     int lastB = 0;
     int pressedBtn = 0; /* 0=aucun, 1=debutant, 2=inter, 3=avance, 4=option, 5=scores */
 
-    while (state == STATE_MENU) {
-        if (kbhit()) {
+    while (state == STATE_MENU)
+    {
+        if (kbhit())
+        {
             char ch = getch();
-            if (ch == '1') return (int)BEGINNER;
-            else if (ch == '2') return (int)INTERMEDIATE;
-            else if (ch == '3') return (int)ADVANCED;
-            else if (ch == 't' || ch == 'T' || ch == 's' || ch == 'S') {
+            if (ch == '1')
+                return (int)BEGINNER;
+            else if (ch == '2')
+                return (int)INTERMEDIATE;
+            else if (ch == '3')
+                return (int)ADVANCED;
+            else if (ch == 't' || ch == 'T' || ch == 's' || ch == 'S')
+            {
                 m.hide();
                 showHighScores();
                 return menu();
             }
-            else if (ch == 'm' || ch == 'M' || ch == '?') {
+            else if (ch == 'm' || ch == 'M' || ch == '?')
+            {
                 questionMarksEnabled = !questionMarksEnabled;
                 m.hide();
                 v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
                 v.setTextColor();
-                outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char*)STR_MENU_MARKS_ON : (char*)STR_MENU_MARKS_OFF);
+                outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char *)STR_MENU_MARKS_ON : (char *)STR_MENU_MARKS_OFF);
                 m.show();
             }
-            else if (ch == 27) return -1; /* Echap pour quitter */
+            else if (ch == 27)
+                return -1; /* Echap pour quitter */
         }
 
         m.getStatus(mx, my, mb);
 
         /* Détection Mouse-Down : on note quel bouton commence à être cliqué */
-        if ((mb & 1) && !(lastB & 1)) {
-            if (mx >= btnX && mx <= btnX + btnW) {
-                if (my >= btn1Y && my <= btn1Y + 32) pressedBtn = 1;
-                else if (my >= btn2Y && my <= btn2Y + 32) pressedBtn = 2;
-                else if (my >= btn3Y && my <= btn3Y + 32) pressedBtn = 3;
-                else if (my >= optY  && my <= optY + 28)  pressedBtn = 4;
-                else if (my >= scrY  && my <= scrY + 28)  pressedBtn = 5;
-                else pressedBtn = 0;
-            } else {
+        if ((mb & 1) && !(lastB & 1))
+        {
+            if (mx >= btnX && mx <= btnX + btnW)
+            {
+                if (my >= btn1Y && my <= btn1Y + 32)
+                    pressedBtn = 1;
+                else if (my >= btn2Y && my <= btn2Y + 32)
+                    pressedBtn = 2;
+                else if (my >= btn3Y && my <= btn3Y + 32)
+                    pressedBtn = 3;
+                else if (my >= optY && my <= optY + 28)
+                    pressedBtn = 4;
+                else if (my >= scrY && my <= scrY + 28)
+                    pressedBtn = 5;
+                else
+                    pressedBtn = 0;
+            }
+            else
+            {
                 pressedBtn = 0;
             }
         }
 
         /* Détection Mouse-Up : l'action ne s'exécute QUE si le curseur est TOUJOURS sur le même bouton */
-        if (!(mb & 1) && (lastB & 1)) {
-            if (pressedBtn != 0 && (mx >= btnX && mx <= btnX + btnW)) {
-                if (pressedBtn == 1 && (my >= btn1Y && my <= btn1Y + 32)) {
+        if (!(mb & 1) && (lastB & 1))
+        {
+            if (pressedBtn != 0 && (mx >= btnX && mx <= btnX + btnW))
+            {
+                if (pressedBtn == 1 && (my >= btn1Y && my <= btn1Y + 32))
+                {
                     return (int)BEGINNER;
-                } else if (pressedBtn == 2 && (my >= btn2Y && my <= btn2Y + 32)) {
+                }
+                else if (pressedBtn == 2 && (my >= btn2Y && my <= btn2Y + 32))
+                {
                     return (int)INTERMEDIATE;
-                } else if (pressedBtn == 3 && (my >= btn3Y && my <= btn3Y + 32)) {
+                }
+                else if (pressedBtn == 3 && (my >= btn3Y && my <= btn3Y + 32))
+                {
                     return (int)ADVANCED;
-                } else if (pressedBtn == 4 && (my >= optY && my <= optY + 28)) {
+                }
+                else if (pressedBtn == 4 && (my >= optY && my <= optY + 28))
+                {
                     questionMarksEnabled = !questionMarksEnabled;
                     m.hide();
                     v.drawPanel(btnX, optY, btnW, 28, questionMarksEnabled ? 0 : 1);
                     v.setTextColor();
-                    outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char*)STR_MENU_MARKS_ON : (char*)STR_MENU_MARKS_OFF);
+                    outtextxy(btnX + 12, optY + 10, questionMarksEnabled ? (char *)STR_MENU_MARKS_ON : (char *)STR_MENU_MARKS_OFF);
                     m.show();
-                } else if (pressedBtn == 5 && (my >= scrY && my <= scrY + 28)) {
+                }
+                else if (pressedBtn == 5 && (my >= scrY && my <= scrY + 28))
+                {
                     m.hide();
                     showHighScores();
                     return menu();
@@ -282,7 +368,8 @@ int MinesApp::menu() {
     return -1;
 }
 
-void MinesApp::play(Difficulty d) {
+void MinesApp::play(Difficulty d)
+{
     m.hide();
     b.setup(d);
     computeLayout();
@@ -292,7 +379,7 @@ void MinesApp::play(Difficulty d) {
     elapsedSeconds = 0;
     gameStartTime = 0;
 
-    drawFullInterface();
+    drawFullInterface(1);
     m.show();
 
     int mx, my, mb;
@@ -307,19 +394,24 @@ void MinesApp::play(Difficulty d) {
     int lastLeftX = -1;
     int lastLeftY = -1;
 
-    while (state == STATE_PLAYING) {
+    while (state == STATE_PLAYING)
+    {
         /* -------------------------------------------------------------
            Gestion du chronomètre
            ------------------------------------------------------------- */
-        if (b.isStarted()) {
+        if (b.isStarted())
+        {
             time_t now = time(NULL);
-            if (gameStartTime == 0) {
+            if (gameStartTime == 0)
+            {
                 gameStartTime = now;
                 lastTick = now;
             }
-            if (now != lastTick) {
+            if (now != lastTick)
+            {
                 elapsedSeconds = (int)(now - gameStartTime);
-                if (elapsedSeconds > 999) elapsedSeconds = 999;
+                if (elapsedSeconds > 999)
+                    elapsedSeconds = 999;
                 lastTick = now;
                 m.hide();
                 v.drawCounter(timerCounterX, counterY, elapsedSeconds);
@@ -330,9 +422,11 @@ void MinesApp::play(Difficulty d) {
         /* -------------------------------------------------------------
            Touche clavier pour revenir au menu
            ------------------------------------------------------------- */
-        if (kbhit()) {
+        if (kbhit())
+        {
             char k = getch();
-            if (k == 27) { /* Echap */
+            if (k == 27)
+            { /* Echap */
                 m.hide();
                 return;
             }
@@ -352,21 +446,29 @@ void MinesApp::play(Difficulty d) {
            Animation dynamique du visage de l'émoji (En cours de partie)
            ------------------------------------------------------------- */
         int targetEmoji = EMOJI_NORMAL;
-        if (onEmoji && (mb & 1)) {
+        if (onEmoji && (mb & 1))
+        {
             /* L'émoji s'enfonce si on le survole avec le clic gauche */
             targetEmoji = EMOJI_CLICKED;
-        } else if (pressedOnEmoji == 1) {
-            /* Si le clic a commencé sur l'émoji mais qu'on glisse en dehors, 
+        }
+        else if (pressedOnEmoji == 1)
+        {
+            /* Si le clic a commencé sur l'émoji mais qu'on glisse en dehors,
                il redevient simplement NORMAL (pas de surprise) */
             targetEmoji = EMOJI_NORMAL;
-        } else if (isChording || (onGrid && (mb & 1))) {
+        }
+        else if (isChording || (onGrid && (mb & 1)))
+        {
             /* Le mode surprise ne s'active QUE si le clic gauche/chord a commencé sur la grille */
             targetEmoji = EMOJI_SURPRISE;
-        } else {
+        }
+        else
+        {
             targetEmoji = EMOJI_NORMAL;
         }
 
-        if (targetEmoji != emojiState) {
+        if (targetEmoji != emojiState)
+        {
             emojiState = targetEmoji;
             m.hide();
             v.drawEmoji(emojiX, emojiY, emojiState);
@@ -376,24 +478,34 @@ void MinesApp::play(Difficulty d) {
         /* =========================================================================
            1. GESTION DU MOUSE-DOWN (Détection initiale du clic)
            ========================================================================= */
-        if (((mb & 1) || (mb & 2)) && !(lastB & 1 || lastB & 2)) {
-            if (onEmoji && (mb & 1)) {
+        if (((mb & 1) || (mb & 2)) && !(lastB & 1 || lastB & 2))
+        {
+            if (onEmoji && (mb & 1))
+            {
                 pressedOnEmoji = 1;
-            } 
-            else if (onGrid) {
-                if ((mb & 1) && (mb & 2)) {
+            }
+            else if (onGrid)
+            {
+                if ((mb & 1) && (mb & 2))
+                {
                     isChording = 1;
-                } else if (mb & 1) {
+                }
+                else if (mb & 1)
+                {
                     pressedCellX = gx;
                     pressedCellY = gy;
-                } else if (mb & 2) {
+                }
+                else if (mb & 2)
+                {
                     rightPressedX = gx;
                     rightPressedY = gy;
                 }
             }
         }
-        else if ((mb & 1) && (mb & 2) && !(lastB & 1 && lastB & 2) && onGrid && !isChording) {
-            if (pressedCellX >= 0 && pressedCellY >= 0) {
+        else if ((mb & 1) && (mb & 2) && !(lastB & 1 && lastB & 2) && onGrid && !isChording)
+        {
+            if (pressedCellX >= 0 && pressedCellY >= 0)
+            {
                 m.hide();
                 drawSingleCell(pressedCellX, pressedCellY, 0);
                 m.show();
@@ -406,19 +518,26 @@ void MinesApp::play(Difficulty d) {
         /* =========================================================================
         2. GESTION DU SURVOL DYNAMIQUE (Focus Anti-clignotement)
         ========================================================================= */
-        if (isChording) {
-            if (onGrid) {
+        if (isChording)
+        {
+            if (onGrid)
+            {
                 // OPTIMISATION : On ne redessine que si la souris a changé de case
-                if (lastChordX != gx || lastChordY != gy) {
-                    
+                if (lastChordX != gx || lastChordY != gy)
+                {
+
                     m.hide();
                     // 1. Relever les anciennes cases enfoncées
-                    if (lastChordX != -1 && lastChordY != -1) {
-                        for (int dy = -1; dy <= 1; dy++) {
-                            for (int dx = -1; dx <= 1; dx++) {
+                    if (lastChordX != -1 && lastChordY != -1)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            for (int dx = -1; dx <= 1; dx++)
+                            {
                                 int nx = lastChordX + dx;
                                 int ny = lastChordY + dy;
-                                if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                                if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH())
+                                {
                                     drawSingleCell(nx, ny, 0);
                                 }
                             }
@@ -426,59 +545,74 @@ void MinesApp::play(Difficulty d) {
                     }
 
                     // 2. Enfoncer les 9 nouvelles cases autour de la souris actuelle (gx, gy)
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
                             int nx = gx + dx;
                             int ny = gy + dy;
-                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH())
+                            {
                                 Cell &adj = b.get(nx, ny);
-                                if (!adj.isRevealed && !adj.isFlagged) {
+                                if (!adj.isRevealed && !adj.isFlagged)
+                                {
                                     drawSingleCell(nx, ny, 1);
                                 }
                             }
                         }
                     }
                     m.show();
-                    
+
                     // On met à jour la position courante du Chord
                     lastChordX = gx;
                     lastChordY = gy;
                 }
-            } else {
+            }
+            else
+            {
                 // Si la souris sort de la grille, on relève tout
-                if (lastChordX != -1 && lastChordY != -1) {
+                if (lastChordX != -1 && lastChordY != -1)
+                {
                     m.hide();
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dx = -1; dx <= 1; dx++) {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
                             int nx = lastChordX + dx;
                             int ny = lastChordY + dy;
-                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH())
+                            {
                                 drawSingleCell(nx, ny, 0);
                             }
                         }
                     }
                     m.show();
-                    
+
                     lastChordX = -1;
                     lastChordY = -1;
                 }
             }
         }
-        else if (pressedCellX >= 0 && pressedCellY >= 0) {
+        else if (pressedCellX >= 0 && pressedCellY >= 0)
+        {
             // Si la souris est sur la grille et que le joueur maintient le clic gauche enfoncé
-            if (onGrid) {
+            if (onGrid)
+            {
                 // OPTIMISATION : On ne redessine que si la souris a changé de case
-                if (lastLeftX != gx || lastLeftY != gy) {
-                    
+                if (lastLeftX != gx || lastLeftY != gy)
+                {
+
                     m.hide();
                     // 1. Relever l'ancienne case qui avait été enfoncée au cycle d'avant
-                    if (lastLeftX != -1 && lastLeftY != -1) {
+                    if (lastLeftX != -1 && lastLeftY != -1)
+                    {
                         drawSingleCell(lastLeftX, lastLeftY, 0);
                     }
 
                     // 2. Enfoncer visuellement la NOUVELLE case actuellement survolée
                     Cell &c = b.get(gx, gy);
-                    if (!c.isRevealed && !c.isFlagged) {
+                    if (!c.isRevealed && !c.isFlagged)
+                    {
                         drawSingleCell(gx, gy, 1); // 1 = enfoncé
                     }
                     m.show();
@@ -487,9 +621,12 @@ void MinesApp::play(Difficulty d) {
                     lastLeftX = gx;
                     lastLeftY = gy;
                 }
-            } else {
+            }
+            else
+            {
                 // Si la souris sort de la grille pendant le clic maintenu, on relève la dernière case
-                if (lastLeftX != -1 && lastLeftY != -1) {
+                if (lastLeftX != -1 && lastLeftY != -1)
+                {
                     m.hide();
                     drawSingleCell(lastLeftX, lastLeftY, 0);
                     m.show();
@@ -500,110 +637,143 @@ void MinesApp::play(Difficulty d) {
         }
 
         /* =========================================================================
-           3. GESTION DU MOUSE-UP (Relâchement et exécution)
-           ========================================================================= */
-        if (isChording && (!(mb & 1) || !(mb & 2))) {
+        3. GESTION DU MOUSE-UP (Relâchement et exécution)
+        ========================================================================= */
+        if (isChording && (!(mb & 1) || !(mb & 2)))
+        {
             m.hide();
-            if (onGrid && gx == lastChordX && gy == lastChordY) {
+            if (onGrid && gx == lastChordX && gy == lastChordY)
+            {
                 int exploded = 0;
-                b.chord(lastChordX, lastChordY, exploded); // Exécution à l'emplacement actuel !
-                if (exploded) state = STATE_LOST;
-                else if (b.checkVictory()) state = STATE_WON;
-                drawGrid();
-                v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
-            } else {
-                // Si on relâche en dehors de la case active, on annule et on relève le tout
-                if (lastChordX != -1 && lastChordY != -1) {
-                    for (int dy = -1; dy <= 1; dy++) {
-                        for (int dx = -1; dx <= 1; dx++) {
+                b.chord(lastChordX, lastChordY, exploded);
+
+                if (exploded)
+                {
+                    state = STATE_LOST;
+                    drawGrid();
+                }
+                else if (b.checkVictory())
+                {
+                    state = STATE_WON;
+                    drawGrid();
+                }
+                else
+                {
+                    // 1. Redessiner les cases révélées par la cascade
+                    renderDirtyCells();
+
+                    // 2. Restaurer les cases 3x3 qui étaient visuellement enfoncées
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
                             int nx = lastChordX + dx;
                             int ny = lastChordY + dy;
-                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH()) {
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH())
+                            {
+                                drawSingleCell(nx, ny);
+                            }
+                        }
+                    }
+                }
+                v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
+            }
+            else
+            {
+                // Relâchement hors case : relever la zone 3x3
+                if (lastChordX != -1 && lastChordY != -1)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        for (int dx = -1; dx <= 1; dx++)
+                        {
+                            int nx = lastChordX + dx;
+                            int ny = lastChordY + dy;
+                            if (nx >= 0 && nx < b.getW() && ny >= 0 && ny < b.getH())
+                            {
                                 drawSingleCell(nx, ny, 0);
                             }
                         }
                     }
                 }
             }
-            isChording = 0; 
-            pressedCellX = -1; 
+            isChording = 0;
+            pressedCellX = -1;
             rightPressedX = -1;
-            lastChordX = -1; 
+            lastChordX = -1;
             lastChordY = -1;
             m.show();
         }
-        else if (!(mb & 1) && (lastB & 1) && !isChording) {
-            if (pressedOnEmoji && onEmoji) {
-                m.hide(); b.setup(d); emojiState = EMOJI_NORMAL; elapsedSeconds = 0; gameStartTime = 0;
-                drawFullInterface(); m.show();
-                pressedOnEmoji = 0; pressedCellX = -1; rightPressedX = -1;
+        else if (!(mb & 1) && (lastB & 1) && !isChording)
+        {
+            if (pressedOnEmoji && onEmoji)
+            {
+                m.hide();
+                b.setup(d);
+                emojiState = EMOJI_NORMAL;
+                elapsedSeconds = 0;
+                gameStartTime = 0;
+                drawFullInterface(1);
+                m.show();
+                pressedOnEmoji = 0;
+                pressedCellX = -1;
+                rightPressedX = -1;
             }
-            else if (pressedCellX >= 0 && pressedCellY >= 0) {
-                // MODIFICATION : On valide l'ouverture sur la case actuellement ciblée par le survol dynamique (lastLeftX/Y)
-                // et non plus sur la case initiale du Mouse-Down (pressedCellX/Y)
-                if (onGrid && gx == lastLeftX && gy == lastLeftY) {
-                    
-                    m.hide();
-                    int res = b.reveal(lastLeftX, lastLeftY); // Ouvre la case survolée !
-                    
-                    if (res == 0) {
+            else if (pressedCellX >= 0 && pressedCellY >= 0)
+            {
+                if (onGrid && gx == lastLeftX && gy == lastLeftY)
+                {
+                    b.clearDirty();
+                    int res = b.reveal(lastLeftX, lastLeftY);
+
+                    if (res == 0)
+                    {
                         state = STATE_LOST;
-                    } 
-                    else if (b.checkVictory()) {
-                        state = STATE_WON;
-                        drawGrid();
-                    } 
-                    else {
-                        // Rendu optimisé à la demande
-                        Cell &clickedCell = b.get(lastLeftX, lastLeftY);
-                        if (clickedCell.count > 0) {
-                            drawSingleCell(lastLeftX, lastLeftY); 
-                        } else {
-                            for (int ty = 0; ty < b.getH(); ty++) {
-                                for (int tx = 0; tx < b.getW(); tx++) {
-                                    if (b.get(tx, ty).isRevealed) {
-                                        drawSingleCell(tx, ty);
-                                    }
-                                }
-                            }
-                        }
                     }
-                    m.show();
-                } else {
-                    // Si on relâche en dehors de la case active (annulation du glissement), on relève l'ancien bouton
-                    if (lastLeftX != -1 && lastLeftY != -1) {
-                        m.hide(); 
-                        drawSingleCell(lastLeftX, lastLeftY, 0); 
+                    else if (b.checkVictory())
+                    {
+                        state = STATE_WON;
+                        m.hide();
+                        drawGrid();
+                        m.show();
+                    }
+                    else
+                    {
+                        renderDirtyCells();
+                    }
+                }
+                else
+                {
+                    if (lastLeftX != -1 && lastLeftY != -1)
+                    {
+                        m.hide();
+                        drawSingleCell(lastLeftX, lastLeftY, 0);
                         m.show();
                     }
                 }
-                // Nettoyage complet de tous les états de mémorisation du clic
-                pressedCellX = -1; 
-                pressedCellY = -1; 
+                pressedCellX = -1;
+                pressedCellY = -1;
                 rightPressedX = -1;
                 lastLeftX = -1;
                 lastLeftY = -1;
             }
             pressedOnEmoji = 0;
         }
-        else if (!(mb & 2) && (lastB & 2) && !isChording) {
-            if (rightPressedX >= 0 && rightPressedY >= 0 && pressedCellX == -1) {
-                if (onGrid && gx == rightPressedX && gy == rightPressedY) {
-                    
-                    m.hide();
-                    
-                    // 1. On modifie l'état logique de la case (Drapeau / ? / Vide)
+        else if (!(mb & 2) && (lastB & 2) && !isChording)
+        {
+            if (rightPressedX >= 0 && rightPressedY >= 0 && pressedCellX == -1)
+            {
+                if (onGrid && gx == rightPressedX && gy == rightPressedY)
+                {
                     b.toggleFlag(gx, gy, questionMarksEnabled);
-                    
-                    drawSingleCell(gx, gy);
-                    
-                    // 2. On met à jour le compteur de mines en haut à gauche
+                    renderDirtyCells();
+
+                    m.hide();
                     v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
-                    
                     m.show();
                 }
             }
-            rightPressedX = -1; 
+            rightPressedX = -1;
             rightPressedY = -1;
         }
 
@@ -612,23 +782,30 @@ void MinesApp::play(Difficulty d) {
 
     /* Fin de partie : Écran fixe */
     m.hide();
-    if (state == STATE_LOST) {
+    if (state == STATE_LOST)
+    {
         emojiState = EMOJI_LOST;
-        
+
         m.hide(); // On cache la souris une seule fois avant la grosse mise à jour
-        
+
         // Au lieu de modifier la grille en mémoire puis de TOUT redessiner,
         // on parcourt la grille et on ne dessine QUE les mines qui apparaissent
-        for (int y = 0; y < b.getH(); y++) {
-            for (int x = 0; x < b.getW(); x++) {
+        for (int y = 0; y < b.getH(); y++)
+        {
+            for (int x = 0; x < b.getW(); x++)
+            {
                 Cell &c = b.get(x, y);
-                
+
                 // Si c'est une mine non découverte, ou un faux drapeau
-                if ((c.isMine && !c.isFlagged) || (!c.isMine && c.isFlagged)) {
+                if ((c.isMine && !c.isFlagged) || (!c.isMine && c.isFlagged))
+                {
                     // On met à jour l'état logique de la case
-                    if (c.isMine && !c.isExploded) {
+                    if (c.isMine && !c.isExploded)
+                    {
                         c.isRevealed = 1;
-                    } else if (!c.isMine && c.isFlagged) {
+                    }
+                    else if (!c.isMine && c.isFlagged)
+                    {
                         c.isFalseMine = 1;
                     }
                     // On ne redessine QUE cette case précise sur l'écran VGA !
@@ -636,17 +813,19 @@ void MinesApp::play(Difficulty d) {
                 }
             }
         }
-        
+
         v.drawEmoji(emojiX, emojiY, emojiState);
         m.show(); // On réaffiche la souris
     }
-    else if (state == STATE_WON) {
+    else if (state == STATE_WON)
+    {
         emojiState = EMOJI_WON;
         v.drawCounter(mineCounterX, counterY, 0);
         v.drawEmoji(emojiX, emojiY, emojiState);
 
         /* Vérification d'un nouveau record */
-        if (scores.isNewRecord(d, elapsedSeconds)) {
+        if (scores.isNewRecord(d, elapsedSeconds))
+        {
             promptNewRecord(d, elapsedSeconds);
             showHighScores();
             drawFullInterface();
@@ -656,32 +835,52 @@ void MinesApp::play(Difficulty d) {
     pressedOnEmoji = 0;
 
     /* Boucle finale d'attente avec comportement poussoir de l'émoji */
-    while (state != STATE_PLAYING) {
-        if (kbhit()) { getch(); m.hide(); return; }
-        
+    while (state != STATE_PLAYING)
+    {
+        if (kbhit())
+        {
+            getch();
+            m.hide();
+            return;
+        }
+
         m.getStatus(mx, my, mb);
         int onEmojiEnd = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
 
         int targetEmojiEnd = (state == STATE_WON) ? EMOJI_WON : EMOJI_LOST;
-        if (onEmojiEnd && (mb & 1) && pressedOnEmoji) targetEmojiEnd = EMOJI_CLICKED;
+        if (onEmojiEnd && (mb & 1) && pressedOnEmoji)
+            targetEmojiEnd = EMOJI_CLICKED;
 
-        if (targetEmojiEnd != emojiState) {
-            emojiState = targetEmojiEnd; m.hide(); v.drawEmoji(emojiX, emojiY, emojiState); m.show();
+        if (targetEmojiEnd != emojiState)
+        {
+            emojiState = targetEmojiEnd;
+            m.hide();
+            v.drawEmoji(emojiX, emojiY, emojiState);
+            m.show();
         }
 
-        if ((mb & 1) && !(lastB & 1)) {
-            if (onEmojiEnd) pressedOnEmoji = 1;
+        if ((mb & 1) && !(lastB & 1))
+        {
+            if (onEmojiEnd)
+                pressedOnEmoji = 1;
         }
 
-        if (!(mb & 1) && (lastB & 1)) {
-            if (pressedOnEmoji && onEmojiEnd) { pressedOnEmoji = 0; play(d); return; }
+        if (!(mb & 1) && (lastB & 1))
+        {
+            if (pressedOnEmoji && onEmojiEnd)
+            {
+                pressedOnEmoji = 0;
+                play(d);
+                return;
+            }
             pressedOnEmoji = 0;
         }
         lastB = mb;
     }
 }
 
-void MinesApp::showHighScores() {
+void MinesApp::showHighScores()
+{
     int screenH = (v.getIsVGA() == 1 ? 480 : 350);
     int pW = 320, pH = 210;
     int pX = (640 - pW) / 2;
@@ -691,16 +890,17 @@ void MinesApp::showHighScores() {
     v.setTextColor();
 
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
-    const char* hTitle = STR_MENU_SCORES_TITLE;
-    int tx = pX + (pW - textwidth((char*)hTitle)) / 2;
-    outtextxy(tx, pY + 12, (char*)hTitle);
+    const char *hTitle = STR_MENU_SCORES_TITLE;
+    int tx = pX + (pW - textwidth((char *)hTitle)) / 2;
+    outtextxy(tx, pY + 12, (char *)hTitle);
 
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
-    const char* diffNames[3] = { STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED };
+    const char *diffNames[3] = {STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED};
     char lineBuf[64];
 
-    for (int i = 0; i < 3; i++) {
-        const HighScore& s = scores.get((Difficulty)i);
+    for (int i = 0; i < 3; i++)
+    {
+        const HighScore &s = scores.get((Difficulty)i);
         sprintf(lineBuf, "%-14s: %3d s  %-10s", diffNames[i], s.time, s.name);
         outtextxy(pX + 24, pY + 60 + i * 28, lineBuf);
     }
@@ -720,11 +920,15 @@ void MinesApp::showHighScores() {
     int mx, my, mb, lastB = 0;
     int pressed = 0;
 
-    while (1) {
-        if (kbhit()) {
+    while (1)
+    {
+        if (kbhit())
+        {
             char ch = getch();
-            if (ch == 27 || ch == 13 || ch == 'o' || ch == 'O') break;
-            if (ch == 'r' || ch == 'R') {
+            if (ch == 27 || ch == 13 || ch == 'o' || ch == 'O')
+                break;
+            if (ch == 'r' || ch == 'R')
+            {
                 scores.reset();
                 scores.save();
                 m.hide();
@@ -735,21 +939,29 @@ void MinesApp::showHighScores() {
 
         m.getStatus(mx, my, mb);
 
-        if ((mb & 1) && !(lastB & 1)) {
-            if (my >= btnResetY && my <= btnResetY + btnH) {
-                if (mx >= btnResetX && mx <= btnResetX + btnResetW) pressed = 1;
-                else if (mx >= btnOkX && mx <= btnOkX + btnOkW) pressed = 2;
+        if ((mb & 1) && !(lastB & 1))
+        {
+            if (my >= btnResetY && my <= btnResetY + btnH)
+            {
+                if (mx >= btnResetX && mx <= btnResetX + btnResetW)
+                    pressed = 1;
+                else if (mx >= btnOkX && mx <= btnOkX + btnOkW)
+                    pressed = 2;
             }
         }
 
-        if (!(mb & 1) && (lastB & 1)) {
-            if (pressed == 1 && (mx >= btnResetX && mx <= btnResetX + btnResetW && my >= btnResetY && my <= btnResetY + btnH)) {
+        if (!(mb & 1) && (lastB & 1))
+        {
+            if (pressed == 1 && (mx >= btnResetX && mx <= btnResetX + btnResetW && my >= btnResetY && my <= btnResetY + btnH))
+            {
                 scores.reset();
                 scores.save();
                 m.hide();
                 showHighScores();
                 return;
-            } else if (pressed == 2 && (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnH)) {
+            }
+            else if (pressed == 2 && (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnH))
+            {
                 break;
             }
             pressed = 0;
@@ -760,7 +972,8 @@ void MinesApp::showHighScores() {
     m.hide();
 }
 
-void MinesApp::promptNewRecord(Difficulty d, int seconds) {
+void MinesApp::promptNewRecord(Difficulty d, int seconds)
+{
     int screenH = (v.getIsVGA() == 1 ? 480 : 350);
     int pW = 340, pH = 190;
     int pX = (640 - pW) / 2;
@@ -770,13 +983,13 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds) {
     v.setTextColor();
 
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2);
-    const char* hTitle = STR_MENU_SCORES_NEWRECORD1;
-    int tx = pX + (pW - textwidth((char*)hTitle)) / 2;
-    outtextxy(tx, pY + 12, (char*)hTitle);
+    const char *hTitle = STR_MENU_SCORES_NEWRECORD1;
+    int tx = pX + (pW - textwidth((char *)hTitle)) / 2;
+    outtextxy(tx, pY + 12, (char *)hTitle);
 
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
     char buf[64];
-    const char* diffNames[3] = { STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED };
+    const char *diffNames[3] = {STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED};
     sprintf(buf, STR_MENU_SCORES_NEWRECORD2, diffNames[(int)d], seconds);
     outtextxy(pX + (pW - textwidth(buf)) / 2, pY + 50, buf);
 
@@ -798,19 +1011,29 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds) {
     int mx, my, mb, lastB = 0;
     int pressedOk = 0;
 
-    while (1) {
-        if (kbhit()) {
+    while (1)
+    {
+        if (kbhit())
+        {
             char ch = getch();
-            if (ch == 13) {
+            if (ch == 13)
+            {
                 break;
-            } else if (ch == 27) {
+            }
+            else if (ch == 27)
+            {
                 break;
-            } else if (ch == 8) {
-                if (len > 0) {
+            }
+            else if (ch == 8)
+            {
+                if (len > 0)
+                {
                     len--;
                     name[len] = '\0';
                 }
-            } else if (ch >= 32 && ch <= 126 && len < 15) {
+            }
+            else if (ch >= 32 && ch <= 126 && len < 15)
+            {
                 name[len++] = ch;
                 name[len] = '\0';
             }
@@ -826,14 +1049,18 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds) {
 
         m.getStatus(mx, my, mb);
 
-        if ((mb & 1) && !(lastB & 1)) {
-            if (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH) {
+        if ((mb & 1) && !(lastB & 1))
+        {
+            if (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH)
+            {
                 pressedOk = 1;
             }
         }
 
-        if (!(mb & 1) && (lastB & 1)) {
-            if (pressedOk && mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH) {
+        if (!(mb & 1) && (lastB & 1))
+        {
+            if (pressedOk && mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnOkY && my <= btnOkY + btnOkH)
+            {
                 break;
             }
             pressedOk = 0;
@@ -843,10 +1070,30 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds) {
     }
 
     m.hide();
-    if (len > 0) {
+    if (len > 0)
+    {
         scores.update(d, name, seconds);
-    } else {
+    }
+    else
+    {
         scores.update(d, STR_MENU_SCORES_DEFAULT, seconds);
     }
 }
 
+void MinesApp::renderDirtyCells()
+{
+    int count = b.getDirtyCount();
+    if (count == 0)
+        return;
+
+    const Point *dirty = b.getDirtyCells();
+
+    m.hide();
+    for (int i = 0; i < count; i++)
+    {
+        drawSingleCell(dirty[i].x, dirty[i].y);
+    }
+    m.show();
+
+    b.clearDirty();
+}

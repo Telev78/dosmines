@@ -2,7 +2,7 @@
 
 Clone rétro du jeu **Démineur** (*Minesweeper*) développé en C++ pour **MS-DOS**, ciblant le compilateur **Borland C++ 3.1**. 
 
-Le moteur graphique est **100% hybride et compatible de manière native avec les architectures EGA et VGA** grâce à une détection matérielle automatique au démarrage.
+Le moteur graphique est **compatible avec les architectures EGA et VGA** grâce à une détection matérielle automatique au démarrage.
 
 L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphique BGI, les polices vectorielles ainsi que la sprite sheet par défaut sont directement incorporés dans le binaire sans nécessiter de fichiers annexes lors de l'exécution.
 
@@ -12,15 +12,15 @@ L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphiq
 
 * **Double compatibilité matérielle native (EGA / VGA) :**
   * **Mode VGAHI :** Résolution 640x480 en 16 couleurs. Injection de la palette du fichier BMP indexé (lue depuis ses structures d'en-tête RGB) directement dans les registres du DAC VGA.
-  * **Mode EGAHI :** Résolution 640x350 en 16 couleurs. Le moteur convertit mathématiquement et à la volée la table de couleurs indexée du BMP vers la palette physique 6-bits (64 couleurs) de l'EGA via ses registres d'attributs matériels.
+  * **Mode EGAHI :** Résolution 640x350 en 16 couleurs. Le moteur convertit mathématiquement et à la volée la table de couleurs indexée du BMP vers la palette physique 6-bits (64 couleurs) de l'EGA via ses registres d'attributs matériels. **Ce mode nécessite une carte EGA équipée d'au moins 128 Ko de mémoire vidéo**.
   * L'ensemble de l'interface (grille, menus, crédits) s'adapte et se recentre dynamiquement selon la hauteur de l'écran détectée (350px ou 480px).
 * **3 modes de difficulté classiques :**
   * **Débutant :** Grille 9x9 avec 10 mines.
   * **Intermédiaire :** Grille 16x16 avec 40 mines.
-  * **Avancé :** Grille 30x16 avec 99 mines (compactée intelligemment pour s'intégrer sans débordement dans les 350 pixels de haut du mode EGA).
+  * **Avancé :** Grille 30x16 avec 99 mines.
 * **Mécaniques complètes et fidélité chirurgicale (Mouse Focus) :**
   * **Premier clic sécurisé :** Génération et placement des mines garantissant que le tout premier clic n'est jamais une mine.
-  * **Cascade (Flood-fill) :** Révélation automatique récursive optimisée (sans récursion de pile) de toutes les zones vides adjacentes.
+  * **Cascade (Flood-fill) :** Révélation automatique de toutes les zones vides adjacentes.
   * **Gestion rigoureuse du Mouse-Up :** Toutes les actions (clic gauche pour creuser, clic droit pour marquer) sont validées *uniquement* au relâchement du bouton. Un glissement hors de la case cible (*Drag-Out*) annule proprement l'action.
   * **Survol dynamique (Focus) :** Maintenir un bouton enfoncé et glisser hors d'une case restaure son relief. Revenir sur la case initiale réactive visuellement l'enfoncement (*Push-Down* de la case ou du point d'interrogation), offrant un comportement identique à la version Windows 3.1 originale.
   * **Chording visuel dynamique :** Maintenir le clic gauche + droit simultanés enfonce visuellement la case ciblée et ses 8 voisines éligibles. Le survol suit le curseur et le coup n'est validé au relâchement que si la souris n'a pas quitté la cellule d'ancrage initiale.
@@ -29,7 +29,7 @@ L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphiq
   * Bandeau supérieur avec afficheurs LED rouges (mines restantes et chronomètre en temps réel jusqu'à 999 secondes).
   * Bouton émoji interactif au centre réagissant aux actions et au survol (visage normal, enfoncé/cliqué au survol, surpris lors des clics sur la grille, lunettes de soleil en cas de victoire, croix en cas de défaite).
   * Algorithme de conversion de palette optimisé préservant les biseaux et reliefs 3D de l'interface en séparant proprement les intensités lumineuses sur EGA.
-  * Compatibilité avec les thèmes alternatifs : si un fichier `asset.bmp` externe est présent, il est chargé en priorité ; sinon, le jeu bascule sur ses données intégrées en mémoire `far`.
+  * Compatibilité avec les thèmes alternatifs : si un fichier `asset.bmp` externe est présent, il est chargé en priorité ; sinon, le jeu bascule sur ses données intégrées.
 
 ---
 
@@ -48,23 +48,49 @@ L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphiq
    ├── src/
    └── ...
    ```
-2. Configurer la variable d'environnement système ou utilisateur `DOSBOX_PATH` pointant vers le dossier contenant l'exécutable de **DOSBox** (ou DOSBox-X / DOSBox Staging).
-3. *(Recommandé sous 86Box)* Pour tester le mode EGA de manière authentique, assurez-vous de configurer votre machine virtuelle 86Box avec une carte graphique **EGA dotée de 256 Ko de mémoire vidéo** (pour éviter les conflits d'allocation de plans de mémoire avec le pilote de souris DOS matérielle en résolution 640x350).
+2. L'environnement d'émulation (DOSBox, DOSBox Staging ou DOSBox-X) doit être configuré avec un profil de rendu graphique réglé au **minimum sur `machine=ega`** ou idéalement `machine=svga_s3` (VGA par défaut) pour exécuter et tester le jeu correctement.
+
+### Configuration de l'environnement VS Code
+Le projet utilise le système de configuration de Visual Studio Code pour localiser l'émulateur DOSBox.
+
+Avant de compiler, ajustez les chemins dans votre fichier `.vscode/settings.json` local selon votre installation :
+
+```json
+{
+    "dosbox.windows.installPath": "C:\\Chemin\\Vers\\Votre\\Dossier\\DOSBox",
+    "dosbox.windows.executableName": "dosbox.exe",
+    "dosbox.windows.configPath": "${config:dosbox.windows.installPath}\\vscode.conf",
+    "dosbox.linux.binaryName": "dosbox",
+    "dosbox.linux.configPath": "${userHome}/.config/dosbox/vscode.conf"
+}
+```
 
 ### Compilation via VS Code
-Le projet est directement compilable depuis **Visual Studio Code** via les tâches configurées (`Ctrl+Shift+B` ou menu *Terminal > Run Build Task*). La tâche lance DOSBox qui exécute Borland `MAKE.EXE` sur le `makefile` du projet, générant l'exécutable final autonome dans le dossier `build/dosmines.exe`.
+Le projet est directement compilable depuis **Visual Studio Code** via les tâches configurées :
+* Vous pouvez lancer la tâche de build par défaut directement avec le raccourci `Ctrl+Shift+B` (ou via le menu *Terminal > Run Build Task*).
+* Toutes les tâches personnalisées du projet (comme l'exécution de l'application ou le nettoyage du dossier de build) sont également accessibles à tout moment en ouvrant la **palette de commandes** (`Ctrl+Shift+P`), en saisissant `Tâches : exécuter la tâche` (ou `Tasks: Run Task`), puis en sélectionnant la commande souhaitée dans la liste.
+
+La tâche sélectionnée lancera automatiquement l'instance DOSBox configurée pour exécuter le traitement voulu.
 
 ### Compilation via l'IDE Borland C++
 Un fichier de projet est également disponible dans le dossier `PROJECT/` :
 1. Lancez l'environnement Borland C++ (`BC.EXE`) dans DOSBox ou sur votre machine DOS.
 2. Ouvrez le projet situé dans le répertoire `PROJECT/`.
-3. Lancez la compilation directe (*Compile > Build all*).
+3. **⚠️ Note importante avant compilation :** L'IDE Borland requiert la présence des fichiers objets graphiques et polices vectorielles directement incorporés. Si vous n'avez pas exécuté la compilation VS Code au moins une fois, vous devez générer manuellement ces trois fichiers objets à l'aide de l'outil `BGIOBJ.EXE` inclus dans le répertoire `BORLANDC\BGI`. Exécutez les commandes DOS suivantes depuis le dossier racine de votre projet :
+   ```cmd
+   mkdir build
+   .\BORLANDC\BGI\bgiobj .\BORLANDC\BGI\EGAVGA.BGI .\build\egavga.obj _EGAVGA_driver
+   .\BORLANDC\BGI\bgiobj .\BORLANDC\BGI\SANS.CHR .\build\sans.obj _sansserif_font
+   .\BORLANDC\BGI\bgiobj .\BORLANDC\BGI\LITT.CHR .\build\litt.obj _small_font
+   ```
+   *Sans cette étape, l'édition de liens (link) au sein de l'IDE Borland échouera.*
+4. Lancez la compilation directe dans l'IDE (*Compile > Build all*).
 
 ---
 
 ## Outils d'accompagnement (`tools/`)
 
-Le répertoire `tools/` contient trois scripts Python indispensables pour la gestion des ressources graphiques et la personnalisation des thèmes :
+Le répertoire `tools/` contient trois scripts Python indispensables pour la gestion des ressources graphiques et la personnalisation des thèmes.
 
 * **`tools/bin2c.py` :** Convertit un fichier d'asset binaire (`asset.bmp`) en tableau d'octets C++ (`src/assetdef.cpp` et `src/assetdef.h`) qualifié en mémoire `far` pour intégrer directement la sprite sheet dans l'exécutable lors de la compilation.
 * **`tools/palette.py` :** Inspecte un fichier BMP 4-bits ou 8-bits indexé et extrait sa table de palette sous forme d'image PNG claire, affichant les pavés de couleurs, leurs index et leurs codes hexadécimaux disposés en quinconce.
@@ -76,3 +102,43 @@ Le répertoire `tools/` contient trois scripts Python indispensables pour la ges
 
 * **Développement :** Telev avec l'aide d'un agent IA.
 * **Ressources graphiques :** Un grand merci à **Black Squirrel** pour la création de la sprite sheet originale du Démineur.
+
+---
+
+## Captures d'écran
+
+### Interface et Menus
+<p align="center">
+  <img src="docs/screenshots/menu_principal.png" width="45%" alt="Menu Principal - Sélection des difficultés" />
+  <img src="docs/screenshots/meilleurs_temps.png" width="45%" alt="Tableau des Meilleurs Temps" />
+</p>
+
+### Comparaison des rendus matériels (Hybride VGA / EGA)
+
+Le moteur graphique s'adapte de manière native aux deux architectures. Les captures d'écran ci-dessous ont été ajustées au **ratio d'aspect 4:3** afin de restituer fidèlement l'expérience visuelle sur un moniteur CRT d'époque. 
+
+Sans aucune altération ou compensation logicielle du code, on observe l'impact direct des pixels rectangulaires du mode EGAHI (640x350) qui étirent verticalement les éléments par rapport aux pixels carrés du mode VGAHI (640x480) :
+
+#### 🏆 Écrans de Victoire (VGA vs EGA)
+> Comparaison de la grille en mode Débutant. L'affichage s'adapte automatiquement à la hauteur disponible (480 lignes en VGA contre 350 lignes en EGA). 
+
+<p align="center">
+  <img src="docs/screenshots/partie_gagne.png" width="48%" alt="Partie gagnée - Résolution VGA (640x480)" />
+  <img src="docs/screenshots/partie_gagne_ega.png" width="48%" alt="Partie gagnée - Résolution EGA (640x350 étiré en 4:3)" />
+</p>
+
+#### ✍️ Fenêtres de Record (VGA vs EGA)
+> La déformation liée aux pixels non carrés est particulièrement notable sur la boîte de dialogue de saisie du score : le pop-up apparaît visiblement plus allongé verticalement en mode EGA.
+
+<p align="center">
+  <img src="docs/screenshots/nouveau_record.png" width="48%" alt="Saisie du nom - Résolution VGA" />
+  <img src="docs/screenshots/nouveau_record_ega.png" width="48%" alt="Saisie du nom - Résolution EGA" />
+</p>
+
+#### 💀 Écran de Défaite (VGA)
+> Gestion complète des états de la grille avec révélation des mines et mise à jour de l'émoji central.
+
+<p align="center">
+  <img src="docs/screenshots/partie_perdu.png" width="60%" alt="Partie perdue en résolution VGA" />
+</p>
+

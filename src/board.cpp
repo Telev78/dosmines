@@ -4,68 +4,95 @@
 #include "board.h"
 
 Board::Board() : grid(NULL), W(0), H(0), mines(0),
-                 firstClickDone(0), flagsCount(0), revealedCount(0) {}
+                 firstClickDone(0), flagsCount(0), revealedCount(0), dirtyCount(0) {}
 
-Board::~Board() {
-    if (grid) {
+Board::~Board()
+{
+    if (grid)
+    {
         free(grid);
         grid = NULL;
     }
 }
 
-void Board::setup(Difficulty d) {
-    if (grid) {
+void Board::setup(Difficulty d)
+{
+    if (grid)
+    {
         free(grid);
         grid = NULL;
     }
-    if (d == BEGINNER) {
-        W = 9;  H = 9;  mines = 10;
-    } else if (d == INTERMEDIATE) {
-        W = 16; H = 16; mines = 40;
-    } else {
-        W = 30; H = 16; mines = 99;
+    if (d == BEGINNER)
+    {
+        W = 9;
+        H = 9;
+        mines = 10;
     }
-    grid = (Cell*)calloc(W * H, sizeof(Cell));
+    else if (d == INTERMEDIATE)
+    {
+        W = 16;
+        H = 16;
+        mines = 40;
+    }
+    else
+    {
+        W = 30;
+        H = 16;
+        mines = 99;
+    }
+    grid = (Cell *)calloc(W * H, sizeof(Cell));
     firstClickDone = 0;
     flagsCount = 0;
     revealedCount = 0;
+    dirtyCount = 0;
 }
 
-void Board::placeMines(int safeX, int safeY) {
+void Board::placeMines(int safeX, int safeY)
+{
     srand((unsigned int)time(NULL));
     int p = 0;
-    while (p < mines) {
+    while (p < mines)
+    {
         int i = rand() % (W * H);
         int x = i % W;
         int y = i / W;
         /* La case du premier clic ne doit JAMAIS contenir de mine */
-        if (x == safeX && y == safeY) continue;
-        if (!grid[i].isMine) {
+        if (x == safeX && y == safeY)
+            continue;
+        if (!grid[i].isMine)
+        {
             grid[i].isMine = 1;
             p++;
         }
     }
 
-    Cell* currentCell = grid; // Pointeur glissant qui commence au début de la grille
+    Cell *currentCell = grid; // Pointeur glissant qui commence au début de la grille
 
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
+    for (int y = 0; y < H; y++)
+    {
+        for (int x = 0; x < W; x++)
+        {
             // Accès direct sans multiplication
-            if (currentCell->isMine) {
+            if (currentCell->isMine)
+            {
                 currentCell++; // On passe à la case suivante pour le prochain tour
                 continue;
             }
-            
+
             int c = 0;
-            for (int dy = -1; dy <= 1; dy++) {
+            for (int dy = -1; dy <= 1; dy++)
+            {
                 int ny = y + dy;
-                if (ny >= 0 && ny < H) {
+                if (ny >= 0 && ny < H)
+                {
                     // On se positionne au début de la ligne du voisin
-                    Cell* neighborCell = &grid[ny * W + (x - 1)]; 
-                    
-                    for (int dx = -1; dx <= 1; dx++) {
+                    Cell *neighborCell = &grid[ny * W + (x - 1)];
+
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
                         int nx = x + dx;
-                        if (nx >= 0 && nx < W && neighborCell->isMine) {
+                        if (nx >= 0 && nx < W && neighborCell->isMine)
+                        {
                             c++;
                         }
                         neighborCell++; // Avance d'une case à chaque itération de dx
@@ -79,29 +106,39 @@ void Board::placeMines(int safeX, int safeY) {
 }
 
 /* Retourne : 1 si succès, 0 si mine explosée (perdu), -1 si action ignorée (drapeau ou déjà révélée) */
-int Board::reveal(int x, int y) {
-    if (x < 0 || x >= W || y < 0 || y >= H) return -1;
+int Board::reveal(int x, int y)
+{
+    if (x < 0 || x >= W || y < 0 || y >= H)
+        return -1;
     Cell &c = grid[y * W + x];
-    if (c.isRevealed || c.isFlagged) return -1;
+    if (c.isRevealed || c.isFlagged)
+        return -1;
 
-    if (!firstClickDone) {
+    if (!firstClickDone)
+    {
         placeMines(x, y);
         firstClickDone = 1;
     }
 
     c.isRevealed = 1;
+    addDirty(x, y);
     revealedCount++;
 
-    if (c.isMine) {
+    if (c.isMine)
+    {
         c.isExploded = 1;
         return 0; /* Perdu */
     }
 
     /* Cascade (Flood-fill) si case vide */
-    if (c.count == 0) {
-        for (int dy = -1; dy <= 1; dy++) {
-            for (int dx = -1; dx <= 1; dx++) {
-                if (dx == 0 && dy == 0) continue;
+    if (c.count == 0)
+    {
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
                 reveal(x + dx, y + dy);
             }
         }
@@ -109,56 +146,80 @@ int Board::reveal(int x, int y) {
     return 1;
 }
 
-void Board::toggleFlag(int x, int y, int enableQuestionMarks) {
-    if (x < 0 || x >= W || y < 0 || y >= H) return;
+void Board::toggleFlag(int x, int y, int enableQuestionMarks)
+{
+    clearDirty();
+    if (x < 0 || x >= W || y < 0 || y >= H)
+        return;
     Cell &c = grid[y * W + x];
-    if (c.isRevealed) return;
+    if (c.isRevealed)
+        return;
 
-    if (enableQuestionMarks) {
+    if (enableQuestionMarks)
+    {
         /* Cycle à 3 états : Non-marqué -> Drapeau -> ? -> Non-marqué */
-        if (!c.isFlagged && !c.isQuestion) {
+        if (!c.isFlagged && !c.isQuestion)
+        {
             c.isFlagged = 1;
             c.isQuestion = 0;
             flagsCount++;
-        } else if (c.isFlagged) {
+        }
+        else if (c.isFlagged)
+        {
             c.isFlagged = 0;
             c.isQuestion = 1;
             flagsCount--;
-        } else {
+        }
+        else
+        {
             c.isFlagged = 0;
             c.isQuestion = 0;
         }
-    } else {
+    }
+    else
+    {
         /* Cycle standard à 2 états : Non-marqué <-> Drapeau */
-        if (c.isFlagged) {
+        if (c.isFlagged)
+        {
             c.isFlagged = 0;
             c.isQuestion = 0;
             flagsCount--;
-        } else {
+        }
+        else
+        {
             c.isFlagged = 1;
             c.isQuestion = 0;
             flagsCount++;
         }
     }
+    addDirty(x, y); // Enregistre le changement visuel du drapeau/?
 }
 
-void Board::chord(int x, int y, int &exploded) {
+void Board::chord(int x, int y, int &exploded)
+{
+    clearDirty();
     exploded = 0;
-    if (x < 0 || x >= W || y < 0 || y >= H) return;
-    
+    if (x < 0 || x >= W || y < 0 || y >= H)
+        return;
+
     // Utilisation d'un pointeur direct pour la case centrale
-    Cell* centerCell = &grid[y * W + x];
-    if (!centerCell->isRevealed || centerCell->count == 0) return;
+    Cell *centerCell = &grid[y * W + x];
+    if (!centerCell->isRevealed || centerCell->count == 0)
+        return;
 
     /* 1. Compter les drapeaux adjacents avec pointeur */
     int adjacentFlags = 0;
-    for (int dy = -1; dy <= 1; dy++) {
+    for (int dy = -1; dy <= 1; dy++)
+    {
         int ny = y + dy;
-        if (ny >= 0 && ny < H) {
-            Cell* neighbor = &grid[ny * W + (x - 1)];
-            for (int dx = -1; dx <= 1; dx++) {
+        if (ny >= 0 && ny < H)
+        {
+            Cell *neighbor = &grid[ny * W + (x - 1)];
+            for (int dx = -1; dx <= 1; dx++)
+            {
                 int nx = x + dx;
-                if (nx >= 0 && nx < W && neighbor->isFlagged) {
+                if (nx >= 0 && nx < W && neighbor->isFlagged)
+                {
                     adjacentFlags++;
                 }
                 neighbor++; // Évite de recalculer l'index
@@ -167,16 +228,23 @@ void Board::chord(int x, int y, int &exploded) {
     }
 
     /* 2. Révéler les cases si le compte est bon */
-    if (adjacentFlags == centerCell->count) {
-        for (int dy2 = -1; dy2 <= 1; dy2++) {
+    if (adjacentFlags == centerCell->count)
+    {
+        for (int dy2 = -1; dy2 <= 1; dy2++)
+        {
             int ny = y + dy2;
-            if (ny >= 0 && ny < H) {
-                Cell* neighbor = &grid[ny * W + (x - 1)];
-                for (int dx2 = -1; dx2 <= 1; dx2++) {
+            if (ny >= 0 && ny < H)
+            {
+                Cell *neighbor = &grid[ny * W + (x - 1)];
+                for (int dx2 = -1; dx2 <= 1; dx2++)
+                {
                     int nx = x + dx2;
-                    if (nx >= 0 && nx < W) {
-                        if (!neighbor->isRevealed && !neighbor->isFlagged) {
-                            if (reveal(nx, ny) == 0) {
+                    if (nx >= 0 && nx < W)
+                    {
+                        if (!neighbor->isRevealed && !neighbor->isFlagged)
+                        {
+                            if (reveal(nx, ny) == 0)
+                            {
                                 exploded = 1;
                             }
                         }
@@ -188,24 +256,41 @@ void Board::chord(int x, int y, int &exploded) {
     }
 }
 
-
-void Board::revealAllMines() {
-    for (int y = 0; y < H; y++) {
-        for (int x = 0; x < W; x++) {
+void Board::revealAllMines()
+{
+    for (int y = 0; y < H; y++)
+    {
+        for (int x = 0; x < W; x++)
+        {
             Cell &c = grid[y * W + x];
-            if (c.isMine && !c.isFlagged && !c.isExploded) {
+            if (c.isMine && !c.isFlagged && !c.isExploded)
+            {
                 c.isRevealed = 1;
-            } else if (!c.isMine && c.isFlagged) {
+            }
+            else if (!c.isMine && c.isFlagged)
+            {
                 c.isFalseMine = 1;
             }
         }
     }
 }
 
-int Board::checkVictory() {
+int Board::checkVictory()
+{
     return (revealedCount == (W * H - mines));
 }
 
-Cell& Board::get(int x, int y) {
+Cell &Board::get(int x, int y)
+{
     return grid[y * W + x];
+}
+
+void Board::addDirty(int x, int y)
+{
+    if (dirtyCount < 480)
+    {
+        dirtyCells[dirtyCount].x = x;
+        dirtyCells[dirtyCount].y = y;
+        dirtyCount++;
+    }
 }
