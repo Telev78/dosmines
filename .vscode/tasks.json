@@ -14,7 +14,7 @@
             "linux": {
                 "command": "bash",
                 "args": [
-                    "-c", "if [ ! -d 'BORLANDC' ] && [ ! -d 'borlandc' ]; then echo '[ERREUR] Le dossier BORLANDC est introuvable !'; exit 1; fi; mkdir -p build"
+                    "-c", "if [ ! -d \"BORLANDC\" ] && [ ! -d \"borlandc\" ]; then echo \"[ERREUR] Le dossier BORLANDC est introuvable !\"; exit 1; fi; mkdir -p build"
                 ]
             },
             "problemMatcher": []
