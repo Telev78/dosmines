@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-// Structure pour stocker les coordonnées des cases modifiées
+// Structure pour stocker les coordonnees des cases modifiees
 struct Point
 {
     int x;

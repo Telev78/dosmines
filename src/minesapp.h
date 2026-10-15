@@ -27,7 +27,7 @@ class MinesApp
     int emojiState;
     int questionMarksEnabled;
 
-    /* Suivi de la case enfoncée sous la souris pour annulation au relâchement */
+    /* Suivi de la case enfoncee sous la souris pour annulation au relâchement */
     int pressedCellX, pressedCellY;
 
     void renderDirtyCells();

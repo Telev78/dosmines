@@ -66,16 +66,16 @@ void Board::placeMines(int safeX, int safeY)
         }
     }
 
-    Cell *currentCell = grid; // Pointeur glissant qui commence au début de la grille
+    Cell *currentCell = grid; // Pointeur glissant qui commence au debut de la grille
 
     for (int y = 0; y < H; y++)
     {
         for (int x = 0; x < W; x++)
         {
-            // Accès direct sans multiplication
+            // Acces direct sans multiplication
             if (currentCell->isMine)
             {
-                currentCell++; // On passe à la case suivante pour le prochain tour
+                currentCell++; // On passe a la case suivante pour le prochain tour
                 continue;
             }
 
@@ -85,7 +85,7 @@ void Board::placeMines(int safeX, int safeY)
                 int ny = y + dy;
                 if (ny >= 0 && ny < H)
                 {
-                    // On se positionne au début de la ligne du voisin
+                    // On se positionne au debut de la ligne du voisin
                     Cell *neighborCell = &grid[ny * W + (x - 1)];
 
                     for (int dx = -1; dx <= 1; dx++)
@@ -95,7 +95,7 @@ void Board::placeMines(int safeX, int safeY)
                         {
                             c++;
                         }
-                        neighborCell++; // Avance d'une case à chaque itération de dx
+                        neighborCell++; // Avance d'une case a chaque iteration de dx
                     }
                 }
             }
@@ -105,7 +105,7 @@ void Board::placeMines(int safeX, int safeY)
     }
 }
 
-/* Retourne : 1 si succès, 0 si mine explosée (perdu), -1 si action ignorée (drapeau ou déjà révélée) */
+/* Retourne : 1 si succes, 0 si mine explosee (perdu), -1 si action ignoree (drapeau ou deja revelee) */
 int Board::reveal(int x, int y)
 {
     if (x < 0 || x >= W || y < 0 || y >= H)
@@ -157,7 +157,7 @@ void Board::toggleFlag(int x, int y, int enableQuestionMarks)
 
     if (enableQuestionMarks)
     {
-        /* Cycle à 3 états : Non-marqué -> Drapeau -> ? -> Non-marqué */
+        /* Cycle a 3 etats : Non-marque -> Drapeau -> ? -> Non-marque */
         if (!c.isFlagged && !c.isQuestion)
         {
             c.isFlagged = 1;
@@ -178,7 +178,7 @@ void Board::toggleFlag(int x, int y, int enableQuestionMarks)
     }
     else
     {
-        /* Cycle standard à 2 états : Non-marqué <-> Drapeau */
+        /* Cycle standard a 2 etats : Non-marque <-> Drapeau */
         if (c.isFlagged)
         {
             c.isFlagged = 0;
@@ -222,12 +222,12 @@ void Board::chord(int x, int y, int &exploded)
                 {
                     adjacentFlags++;
                 }
-                neighbor++; // Évite de recalculer l'index
+                neighbor++; // evite de recalculer l'index
             }
         }
     }
 
-    /* 2. Révéler les cases si le compte est bon */
+    /* 2. Reveler les cases si le compte est bon */
     if (adjacentFlags == centerCell->count)
     {
         for (int dy2 = -1; dy2 <= 1; dy2++)
@@ -249,7 +249,7 @@ void Board::chord(int x, int y, int &exploded)
                             }
                         }
                     }
-                    neighbor++; // Évite de recalculer l'index
+                    neighbor++; // evite de recalculer l'index
                 }
             }
         }

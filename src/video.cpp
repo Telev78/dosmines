@@ -98,11 +98,11 @@ Video::Video() : spritesLoaded(0), graphInitialized(0),
 
 int Video::init()
 {
-    /* 1. Détection matérielle du sous-système graphique */
+    /* 1. Detection materielle du sous-systeme graphique */
     int gdriver = DETECT, gmode;
     detectgraph(&gdriver, &gmode);
 
-    /* Détection automatique de la carte graphique */
+    /* Detection automatique de la carte graphique */
     if (gdriver == VGA)
     {
         gdriver = VGA;
@@ -117,10 +117,10 @@ int Video::init()
     }
     else
     {
-        return 0; /* Carte non supportée (CGA, Hercules, etc.) */
+        return 0; /* Carte non supportee (CGA, Hercules, etc.) */
     }
 
-    /* 2. Enregistrement du driver BGI et des polices vectorielles liées */
+    /* 2. Enregistrement du driver BGI et des polices vectorielles liees */
     registerbgidriver(EGAVGA_driver);
     registerbgifont(sansserif_font);
     registerbgifont(small_font);
@@ -224,7 +224,7 @@ int Video::loadSprites(const char *filepath)
 
     if (isVGA)
     {
-        /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+        /* 1. Extinction materielle (sequenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
         /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
@@ -243,7 +243,7 @@ int Video::loadSprites(const char *filepath)
 
     if (isVGA)
     {
-        /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+        /* 3. Rallumage materiel du signal video une fois l'ecran nettoye */
         setDisplayEnable(1);
     }
     if (res)
@@ -258,7 +258,7 @@ int Video::loadSpritesFromMemory(const unsigned char far *data, long size)
 
     if (isVGA)
     {
-        /* 1. Extinction matérielle (séquenceur VGA pour vraie machine / 86Box) */
+        /* 1. Extinction materielle (sequenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
         /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
@@ -274,7 +274,7 @@ int Video::loadSpritesFromMemory(const unsigned char far *data, long size)
 
     if (isVGA)
     {
-        /* 3. Rallumage matériel du signal vidéo une fois l'écran nettoyé */
+        /* 3. Rallumage materiel du signal video une fois l'ecran nettoye */
         setDisplayEnable(1);
     }
     if (res)
@@ -301,7 +301,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
         return 0;
     }
 
-    /* 1. Lecture de la palette du BMP (stockée localement, PAS encore injectée au DAC pour garder l'écran noir) */
+    /* 1. Lecture de la palette du BMP (stockee localement, PAS encore injectee au DAC pour garder l'ecran noir) */
     int numColors = (int)bih.biClrUsed;
     if (numColors == 0 || numColors > 16)
     {
@@ -323,7 +323,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
         return 0;
     }
 
-    /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-dévoilée */
+    /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-devoilee */
     int cellRowTop = imgH - 1 - 50;
     int cellRowBottom = imgH - 1 - 65;
     int cellRowMid = imgH - 1 - 58;
@@ -340,7 +340,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
     stream.read(rowBuffer, rowStride);
     colSurface = (rowBuffer[8 / 2] >> 4);
 
-    /* 3. Fond creusé des compteurs : couleur la plus sombre de la palette */
+    /* 3. Fond creuse des compteurs : couleur la plus sombre de la palette */
     long minLum = 30000L;
     colSunkenBg = 0;
     if (readColors > 0)
@@ -359,24 +359,29 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
         }
     }
 
-    /* Coordonnées de dessin temporaire sur l'écran d'initialisation (0,0) */
+    /* Coordonnees de dessin temporaire sur l'ecran d'initialisation (0,0) */
     int tempX = 0;
     int tempY = 0;
     int i, px, py;
+    int isEgaMode = (vid->getIsVGA() == 0);
 
-    /* 4. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (séparateur 1px) */
-    /* Ordre séquentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
+    /* 4. Ligne 1 (Compteurs, Y=1) : 12 sprites de 13x23 pixels (separateur 1px) */
+    /* Ordre sequentiel : 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, tiret, vide */
     for (i = 0; i < 12; i++)
     {
         int srcX = 1 + i * 14;
         int srcY = 1;
         int sw = 13;
         int sh = 23;
+        int targetH = isEgaMode ? 17 : 23; /* 23 * 0.75 = 17.25 -> 17 px */
 
-        for (py = 0; py < sh; py++)
+        for (py = 0; py < targetH; py++)
         {
-            int bmpRow = imgH - 1 - (srcY + py);
+            /* Nearest-neighbor : on remonte vers la ligne BMP d'origine */
+            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
+
             stream.seek(fileOffset);
             stream.read(rowBuffer, rowStride);
 
@@ -389,27 +394,31 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
             }
         }
 
-        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + sh - 1);
+        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         digitSprites[i] = malloc(sz);
         if (digitSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + sh - 1, digitSprites[i]);
+            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, digitSprites[i]);
         }
     }
+    cleardevice();
 
     /* 5. Ligne 2 (Emojis, Y=25) : 5 sprites de 24x24 pixels */
-    /* Normal, Cliqué, Surpris, Victoire, Défaite */
+    /* Normal, Clique, Surpris, Victoire, Defaite */
     for (i = 0; i < 5; i++)
     {
         int srcX = 1 + i * 25;
         int srcY = 25;
         int sw = 24;
         int sh = 24;
+        int targetH = isEgaMode ? 18 : 24; /* 24 * 0.75 = 18 px */
 
-        for (py = 0; py < sh; py++)
+        for (py = 0; py < targetH; py++)
         {
-            int bmpRow = imgH - 1 - (srcY + py);
+            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
+
             stream.seek(fileOffset);
             stream.read(rowBuffer, rowStride);
 
@@ -422,27 +431,32 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
             }
         }
 
-        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + sh - 1);
+        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         emojiSprites[i] = malloc(sz);
         if (emojiSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + sh - 1, emojiSprites[i]);
+            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, emojiSprites[i]);
         }
     }
 
+    cleardevice();
+
     /* 6. Ligne 3 (Cellules, Y=50) : 8 sprites de 16x16 pixels */
-    /* Non-révélée, Vide, Drapeau, ?, ? enfoncé, Mine, Mine rouge, Fausse mine */
+    /* Non-revelee, Vide, Drapeau, ?, ? enfonce, Mine, Mine rouge, Fausse mine */
     for (i = 0; i < 8; i++)
     {
         int srcX = 1 + i * 17;
         int srcY = 50;
         int sw = 16;
         int sh = 16;
+        int targetH = isEgaMode ? 12 : 16; /* 16 * 0.75 = 12 px */
 
-        for (py = 0; py < sh; py++)
+        for (py = 0; py < targetH; py++)
         {
-            int bmpRow = imgH - 1 - (srcY + py);
+            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
+
             stream.seek(fileOffset);
             stream.read(rowBuffer, rowStride);
 
@@ -455,26 +469,29 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
             }
         }
 
-        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + sh - 1);
+        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         cellSprites[i] = malloc(sz);
         if (cellSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + sh - 1, cellSprites[i]);
+            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, cellSprites[i]);
         }
     }
 
-    /* 7. Ligne 4 (Chiffres de proximité 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
+    /* 7. Ligne 4 (Chiffres de proximite 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
     for (i = 0; i < 8; i++)
     {
         int srcX = 1 + i * 17;
         int srcY = 67;
         int sw = 16;
         int sh = 16;
+        int targetH = isEgaMode ? 12 : 16; /* 16 * 0.75 = 12 px */
 
-        for (py = 0; py < sh; py++)
+        for (py = 0; py < targetH; py++)
         {
-            int bmpRow = imgH - 1 - (srcY + py);
+            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
+
             stream.seek(fileOffset);
             stream.read(rowBuffer, rowStride);
 
@@ -487,18 +504,18 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
             }
         }
 
-        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + sh - 1);
+        unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         numSprites[i] = malloc(sz);
         if (numSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + sh - 1, numSprites[i]);
+            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, numSprites[i]);
         }
     }
 
     free(rowBuffer);
     cleardevice();
 
-    /* 8. Maintenant que l'écran est effacé, on injecte les vraies couleurs de palette au DAC VGA */
+    /* 8. Maintenant que l'ecran est efface, on injecte les vraies couleurs de palette au DAC VGA */
     if (readColors > 0)
     {
         int palIdx;
@@ -530,7 +547,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
                 int g8 = bmpPalette[palIdx].rgbGreen;
                 int b8 = bmpPalette[palIdx].rgbBlue;
 
-                /* Division brute par 85 : sépare parfaitement les nuances 0, 128, 192 et 255 */
+                /* Division brute par 85 : separe parfaitement les nuances 0, 128, 192 et 255 */
                 int vR = r8 / 85;
                 int vG = g8 / 85;
                 int vB = b8 / 85;
@@ -568,38 +585,40 @@ void Video::drawCell(int x, int y, int type)
 
 void Video::drawUnrevealedGrid(int x, int y, int w, int h)
 {
-    // 1. Dessiner uniquement la toute première ligne de cases
+    /* On determine la hauteur reelle de la cellule selon le mode graphique */
+    int cellH = (isVGA == 1) ? 16 : 12;
+
+    // 1. Dessiner uniquement la toute premiere ligne de cases
     for (int col = 0; col < w; col++)
     {
         drawCell(x + col * 16, y, SPR_CELL_UNREVEALED);
     }
 
-    // 2. Allouer un tampon pour capturer le rectangle de la ligne complète
+    // 2. Allouer un tampon adapte à la hauteur reelle (12 ou 16)
     int rowWidthPx = w * 16;
-    unsigned int bufSize = imagesize(x, y, x + rowWidthPx - 1, y + 15);
+    unsigned int bufSize = imagesize(x, y, x + rowWidthPx - 1, y + (cellH - 1));
     void *rowBuffer = malloc(bufSize);
 
     if (rowBuffer != NULL)
     {
-        // Capture du VRAM vers le RAM
-        getimage(x, y, x + rowWidthPx - 1, y + 15, rowBuffer);
+        // Capture du VRAM vers le RAM sur la bonne hauteur
+        getimage(x, y, x + rowWidthPx - 1, y + (cellH - 1), rowBuffer);
 
-        // 3. Duplication instantanée sur les lignes suivantes (H - 1 transferts au lieu de (H-1)*W)
+        // 3. Duplication instantanee calee sur l'espacement vertical corrige (cellH)
         for (int row = 1; row < h; row++)
         {
-            putimage(x, y + row * 16, rowBuffer, COPY_PUT);
+            putimage(x, y + row * cellH, rowBuffer, COPY_PUT);
         }
-
         free(rowBuffer);
     }
     else
     {
-        // Fallback standard en cas de mémoire RAM insuffisante
+        // Fallback standard si la memoire RAM est insuffisante
         for (int row = 1; row < h; row++)
         {
             for (int col = 0; col < w; col++)
             {
-                drawCell(x + col * 16, y + row * 16, SPR_CELL_UNREVEALED);
+                drawCell(x + col * 16, y + row * cellH, SPR_CELL_UNREVEALED);
             }
         }
     }
@@ -638,7 +657,7 @@ void Video::drawDigit(int x, int y, int digitIdx)
     }
 }
 
-/* Affichage d'un compteur à 3 digits (format Windows : 000 à 999 ou négatif) */
+/* Affichage d'un compteur à 3 digits (format Windows : 000 à 999 ou negatif) */
 void Video::drawCounter(int x, int y, int value)
 {
     if (value < -99)
@@ -649,7 +668,7 @@ void Video::drawCounter(int x, int y, int value)
     int d[3];
     if (value < 0)
     {
-        d[0] = 10; /* Tiret '-' (index 10) */
+        d[0] = 10; /* Tiret */
         int pos = -value;
         d[1] = (pos / 10) % 10;
         d[2] = pos % 10;
@@ -662,12 +681,16 @@ void Video::drawCounter(int x, int y, int value)
         int v1 = (value / 10) % 10;
         int v2 = value % 10;
 
+        /* Conversion d'index pour correspondre à l'ordre du BMP (1..9, 0) */
         d[0] = (v0 == 0) ? 9 : (v0 - 1);
         d[1] = (v1 == 0) ? 9 : (v1 - 1);
         d[2] = (v2 == 0) ? 9 : (v2 - 1);
     }
 
-    drawSunkenRect(x - 1, y - 1, 13 * 3 + 2, 23 + 2);
+    int digitH = (isVGA == 1) ? 23 : 17;
+
+    drawSunkenRect(x - 1, y - 1, 13 * 3 + 2, digitH + 2);
+
     drawDigit(x, y, d[0]);
     drawDigit(x + 13, y, d[1]);
     drawDigit(x + 26, y, d[2]);
@@ -713,8 +736,8 @@ void Video::setTextColor()
 void Video::setCreditColor()
 {
     /* Si la palette est bicolore (noir et blanc), colShadow est noir (0), ce qui se */
-    /* confondrait avec le fond d'écran noir. On bascule alors sur colHighlight (blanc). */
-    /* En mode couleur, colShadow (gris foncé) offre un contraste doux et feutré sur fond noir. */
+    /* confondrait avec le fond d'ecran noir. On bascule alors sur colHighlight (blanc). */
+    /* En mode couleur, colShadow (gris fonce) offre un contraste doux et feutre sur fond noir. */
     if (colShadow == colSunkenBg)
     {
         setcolor(colHighlight);

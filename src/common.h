@@ -24,7 +24,7 @@ const char *const STR_MENU_ADVANCED = "3. AVANCE (30x16)";
 const char *const STR_MENU_SCORES = "MEILLEURS TEMPS (T)";
 const char *const STR_MENU_MARKS_ON = "[X] MARQUES (?) (M)";
 const char *const STR_MENU_MARKS_OFF = "[ ] MARQUES (?) (M)";
-const char *const STR_CREDIT_LEFT = "v1.4 - (c) Telev";
+const char *const STR_CREDIT_LEFT = "v1.5 - (c) 2026 Telev";
 const char *const STR_CREDIT_RIGHT = "Sprites: Black Squirrel";
 const char *const STR_MENU_SCORES_BEGINNER = "Debutant";
 const char *const STR_MENU_SCORES_INTERMED = "Intermediaire";
@@ -37,7 +37,7 @@ const char *const STR_MENU_SCORES_NEWRECORD2 = "Nouveau record %s : %d s";
 const char *const STR_MENU_SCORES_DEFAULT = "Anonyme";
 const char *const STR_MENU_SCORES_NAME = "Entrez votre nom :";
 
-/* Messages d'erreur système au démarrage */
+/* Messages d'erreur systeme au demarrage */
 const char *const STR_ERR_GRAPH_LINE1 = "=======================================================";
 const char *const STR_ERR_GRAPH_LINE2 = " ERREUR : Carte graphique EGA ou VGA non detectee !";
 const char *const STR_ERR_GRAPH_LINE3 = " Ce jeu necessite une carte EGA (640x350) ou VGA (640x480).";

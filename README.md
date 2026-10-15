@@ -10,25 +10,25 @@ L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphiq
 
 ## Fonctionnalités
 
-* **Double compatibilité matérielle native (EGA / VGA) :**
-  * **Mode VGAHI :** Résolution 640x480 en 16 couleurs. Injection de la palette du fichier BMP indexé (lue depuis ses structures d'en-tête RGB) directement dans les registres du DAC VGA.
-  * **Mode EGAHI :** Résolution 640x350 en 16 couleurs. Le moteur convertit mathématiquement et à la volée la table de couleurs indexée du BMP vers la palette physique 6-bits (64 couleurs) de l'EGA via ses registres d'attributs matériels. **Ce mode nécessite une carte EGA équipée d'au moins 128 Ko de mémoire vidéo**.
-  * L'ensemble de l'interface (grille, menus, crédits) s'adapte et se recentre dynamiquement selon la hauteur de l'écran détectée (350px ou 480px).
+* **Double compatibilité matérielle native avec correction d'Aspect Ratio (EGA / VGA) :**
+  * **Mode VGAHI :** Résolution 640x480 en 16 couleurs. Les pixels sont naturellement carrés (ratio 1:1). Injection de la palette du fichier BMP indexé directement dans les registres du DAC VGA.
+  * **Mode EGAHI :** Résolution 640x350 en 16 couleurs. Les pixels d'origine de cette résolution sont rectangulaires (étirés verticalement). **Le moteur intègre un algorithme d'écrasement vertical mathématique (Nearest-Neighbor) appliqué à la volée en RAM lors du chargement des sprites** (~73% sur l'axe Y). Une fois affichés sur le moniteur CRT 4:3 d'époque, les sprites (cases à 16x12, émojis à 24x18, LED à 13x17) reprennent des proportions visuelles carrées sans aucune perte de performance en jeu. *Ce mode nécessite une carte EGA équipée d'au moins 128 Ko de mémoire vidéo*.
+  * L'ensemble de l'interface (grille, menus, boîtes de dialogue, crédits) ainsi que la taille des polices vectorielles et l'échelle des boutons s'adaptent et se recentrent dynamiquement selon la hauteur de l'écran détectée (350px ou 480px) pour garantir une esthétique et un aspect ratio identiques sur les deux architectures.
 * **3 modes de difficulté classiques :**
   * **Débutant :** Grille 9x9 avec 10 mines.
   * **Intermédiaire :** Grille 16x16 avec 40 mines.
   * **Avancé :** Grille 30x16 avec 99 mines.
 * **Mécaniques complètes et fidélité chirurgicale (Mouse Focus) :**
   * **Premier clic sécurisé :** Génération et placement des mines garantissant que le tout premier clic n'est jamais une mine.
-  * **Cascade (Flood-fill) :** Révélation automatique de toutes les zones vides adjacentes.
+  * **Cascade (Flood-fill) :** Révélation automatique (itérative sans récursion) de toutes les zones vides adjacentes.
   * **Gestion rigoureuse du Mouse-Up :** Toutes les actions (clic gauche pour creuser, clic droit pour marquer) sont validées *uniquement* au relâchement du bouton. Un glissement hors de la case cible (*Drag-Out*) annule proprement l'action.
-  * **Survol dynamique (Focus) :** Maintenir un bouton enfoncé et glisser hors d'une case restaure son relief. Revenir sur la case initiale réactive visuellement l'enfoncement (*Push-Down* de la case ou du point d'interrogation), offrant un comportement identique à la version Windows 3.1 originale.
-  * **Chording visuel dynamique :** Maintenir le clic gauche + droit simultanés enfonce visuellement la case ciblée et ses 8 voisines éligibles. Le survol suit le curseur et le coup n'est validé au relâchement que si la souris n'a pas quitté la cellule d'ancrage initiale.
+  * **Survol dynamique (Focus) :** Maintenir un bouton enfoncé et glisser hors d'une case restaure son relief. Revenir sur la case initiale réactive visuellement l'enfoncement, offrant un comportement identique à la version Windows 3.1 originale.
+  * **Chording visuel dynamique :** Maintenir le clic gauche + droit simultanés enfonce visuellement la case ciblée et ses 8 voisines éligibles. La détection physique des coordonnées de lignes s'adapte au pixel près selon la hauteur des cellules (16px en VGA, 12px en EGA) pour éviter tout décalage du pointeur.
   * **Option des points d'interrogation (`?`) :** Option commutable dans le menu principal permettant un cycle complet à trois états.
 * **Interface graphique et Palette :**
-  * Bandeau supérieur avec afficheurs LED rouges (mines restantes et chronomètre en temps réel jusqu'à 999 secondes).
+  * Bandeau supérieur avec afficheurs LED rouges (mines restantes et chronomètre en temps réel jusqu'à 999 secondes) logés dans des rectangles noirs dynamiquement ajustés à la hauteur des chiffres.
   * Bouton émoji interactif au centre réagissant aux actions et au survol (visage normal, enfoncé/cliqué au survol, surpris lors des clics sur la grille, lunettes de soleil en cas de victoire, croix en cas de défaite).
-  * Algorithme de conversion de palette optimisé préservant les biseaux et reliefs 3D de l'interface en séparant proprement les intensités lumineuses sur EGA.
+  * Algorithme de conversion de palette optimisé préservant les biseaux et reliefs 3D de l'interface en séparant proprement les intensités lumineuses sur EGA et VGA.
   * Compatibilité avec les thèmes alternatifs : si un fichier `asset.bmp` externe est présent, il est chargé en priorité ; sinon, le jeu bascule sur ses données intégrées.
 
 ---
@@ -48,7 +48,7 @@ L'exécutable généré est **100% autonome (*standalone*)** : le pilote graphiq
    ├── src/
    └── ...
    ```
-2. L'environnement d'émulation (DOSBox, DOSBox Staging ou DOSBox-X) doit être configuré avec un profil de rendu graphique réglé au **minimum sur `machine=ega`** ou idéalement `machine=svga_s3` (VGA par défaut) pour exécuter et tester le jeu correctement.
+2. L'environnement d'émulation (DOSBox, DOSBox Staging ou DOSBox-X / 86Box) doit être configuré avec un profil de rendu graphique réglé au **minimum sur `machine=ega`** ou idéalement `machine=svga_s3` (VGA par défaut) pour exécuter et tester le jeu correctement.
 
 ### Configuration de l'environnement VS Code
 Le projet utilise le système de configuration de Visual Studio Code pour localiser l'émulateur DOSBox.
@@ -68,7 +68,7 @@ Avant de compiler, ajustez les chemins dans votre fichier `.vscode/settings.json
 ### Compilation via VS Code
 Le projet est directement compilable depuis **Visual Studio Code** via les tâches configurées :
 * Vous pouvez lancer la tâche de build par défaut directement avec le raccourci `Ctrl+Shift+B` (ou via le menu *Terminal > Run Build Task*).
-* Toutes les tâches personnalisées du projet (comme l'exécution de l'application ou le nettoyage du dossier de build) sont également accessibles à tout moment en ouvrant la **palette de commandes** (`Ctrl+Shift+P`), en saisissant `Tâches : exécuter la tâche` (ou `Tasks: Run Task`), puis en sélectionnant la commande souhaitée dans la liste.
+* Toutes les tâches personnalisées du projet (comme l'exécution de l'application ou le nettoyage du dossier de build) sont également accessibles à tout moment en ouvrant la **palette de commandes** (`Ctrl+Shift+P`), en saisissant `Tâches : exécuter la tâche` (ou `Tasks: Run Task`), puis en selecting la commande souhaitée dans la liste.
 
 La tâche sélectionnée lancera automatiquement l'instance DOSBox configurée pour exécuter le traitement voulu.
 
@@ -113,22 +113,23 @@ Le répertoire `tools/` contient trois scripts Python indispensables pour la ges
   <img src="docs/screenshots/meilleurs_temps.png" width="45%" alt="Tableau des Meilleurs Temps" />
 </p>
 
-### Comparaison des rendus matériels (Hybride VGA / EGA)
+### Comparaison des rendus matériels (VGA vs EGA avec correction d'Aspect Ratio)
 
-Le moteur graphique s'adapte de manière native aux deux architectures. Les captures d'écran ci-dessous ont été ajustées au **ratio d'aspect 4:3** afin de restituer fidèlement l'expérience visuelle sur un moniteur CRT d'époque. 
+Le moteur graphique s'adapte de manière native aux deux architectures pour offrir la même géométrie visuelle. Les captures d'écran ci-dessous restituent fidèlement l'expérience visuelle sur un moniteur CRT d'époque au ratio d'aspect 4:3.
 
-Sans aucune altération ou compensation logicielle du code, on observe l'impact direct des pixels rectangulaires du mode EGAHI (640x350) qui étirent verticalement les éléments par rapport aux pixels carrés du mode VGAHI (640x480) :
+Grâce au redimensionnement dynamique des sprites au démarrage et à l'adaptation automatique des mises en page, les éléments tentent de conserver une proportion carrée, que le jeu s'exécute en VGA ou en EGA :
 
-#### 🏆 Écrans de Victoire (VGA vs EGA)
-> Comparaison de la grille en mode Débutant. L'affichage s'adapte automatiquement à la hauteur disponible (480 lignes en VGA contre 350 lignes en EGA). 
+#### 🥇 Écrans de Victoire (VGA vs EGA)
+> Les cases conservent un aspect ratio carré sur les deux architectures. L'en-tête (compteurs de mines et chronomètre) s'ajuste à la hauteur réduite des sprites (16px en VGA contre 12px en EGA).
 
 <p align="center">
   <img src="docs/screenshots/partie_gagne.png" width="48%" alt="Partie gagnée - Résolution VGA (640x480)" />
-  <img src="docs/screenshots/partie_gagne_ega.png" width="48%" alt="Partie gagnée - Résolution EGA (640x350 étiré en 4:3)" />
+  <img src="docs/screenshots/partie_gagne_ega.png" width="48%" alt="Partie gagnée - Résolution EGA (640x350 corrigé)" />
 </p>
 
 #### ✍️ Fenêtres de Record (VGA vs EGA)
-> La déformation liée aux pixels non carrés est particulièrement notable sur la boîte de dialogue de saisie du score : le pop-up apparaît visiblement plus allongé verticalement en mode EGA.
+
+> La boîte globale de dialogue s'adaptent dynamiquement en hauteur pour effacer toute déformation verticale liée au mode EGA.
 
 <p align="center">
   <img src="docs/screenshots/nouveau_record.png" width="48%" alt="Saisie du nom - Résolution VGA" />
