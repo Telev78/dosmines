@@ -7,7 +7,6 @@
 #include "video.h"
 
 /* Structure du Header BMP (format Windows 3.1) */
-#pragma pack(1)
 struct BMPFileHeader
 {
     unsigned int bfType;
@@ -39,7 +38,12 @@ struct BMPColorEntry
     unsigned char rgbRed;
     unsigned char rgbReserved;
 };
-#pragma pack()
+
+/* Verification a la compilation : l'alignement par defaut de BC 3.1 est l'octet.
+   Si une taille est fausse (option -a active), la taille negative provoque une erreur. */
+typedef char chk_BMPFileHeader[(sizeof(BMPFileHeader) == 14) ? 1 : -1];
+typedef char chk_BMPInfoHeader[(sizeof(BMPInfoHeader) == 40) ? 1 : -1];
+typedef char chk_BMPColorEntry[(sizeof(BMPColorEntry) == 4) ? 1 : -1];
 
 /* Classe interne de flux abstrait : fichier ou memoire far */
 class BMPStream

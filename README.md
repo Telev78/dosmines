@@ -29,8 +29,8 @@ Le jeu détecte automatiquement une carte **EGA** ou **VGA** au démarrage. L'ex
 
 ## Configuration requise
 
-* **MS-DOS** ou compatible (FreeDOS, DOSBox, DOSBox Staging, DOSBox-X, 86Box...).
-* **Processeur 286 ou supérieur** (la version Release est compilée avec l'option `-2`).
+* **MS-DOS 3.0 ou supérieur**, ou compatible (FreeDOS, DOSBox, DOSBox Staging, DOSBox-X, 86Box...).
+* **Processeur 8086/8088 ou supérieur** (testé sur un XT à 4,77 MHz).
 * **Carte EGA ou VGA** disposant de 128ko de mémoire vidéo pour le mode 640x350 en 16 couleurs. Les cartes CGA, Hercules et MCGA ne sont pas supportées.
 * **Un pilote de souris DOS** compatible INT 33h. Sans lui, le jeu affiche un message d'erreur et s'arrête.
 

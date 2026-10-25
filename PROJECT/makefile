@@ -16,7 +16,7 @@ BGI      = $(BC_PATH)\BGI
 !ifdef DEBUG
 CFLAGS = -ml -v -y -O- -N $(INCLUDES)    # Model Large, Debug info, Pas d'optimisation
 !else
-CFLAGS = -ml -v- -O2 -vi -2 -y- $(INCLUDES) # Model Large, Pas de debug info, Optimisation vitesse
+CFLAGS = -ml -v- -O2 -vi -1- -y- $(INCLUDES) # Model Large, Pas de debug info, Optimisation vitesse
 !endif
 
 TARGET = $(BUILD_DIR)\dosmines.exe
