@@ -32,6 +32,7 @@ class Board
     // Tampon pour la Dirty List (taille max de la grille : 30x16 = 480)
     Point dirtyCells[480];
     int dirtyCount;
+    int fillStack[480];
 
     void addDirty(int x, int y);
     void placeMines(int safeX, int safeY);
@@ -44,11 +45,10 @@ public:
     int getDirtyCount() const { return dirtyCount; }
     const Point *getDirtyCells() const { return dirtyCells; }
 
-    void setup(Difficulty d);
+    int setup(Difficulty d); /* 1 = ok, 0 = memoire insuffisante */
     int reveal(int x, int y);
     void toggleFlag(int x, int y, int enableQuestionMarks = 1);
     void chord(int x, int y, int &exploded);
-    void revealAllMines();
 
     int checkVictory();
 

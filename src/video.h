@@ -37,6 +37,8 @@ class Video
     int colSunkenBg;  /* Fond creuse des compteurs LED (couleur la plus sombre) */
     int colSurface;   /* Fond moyen de l'interface */
 
+    void restoreDefaultPalette();
+
 public:
     void setVgaPaletteIndex(int index, unsigned char r, unsigned char g, unsigned char b);
     void setDisplayEnable(int enable);

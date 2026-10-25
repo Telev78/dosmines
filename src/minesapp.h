@@ -27,12 +27,9 @@ class MinesApp
     int emojiState;
     int questionMarksEnabled;
 
-    /* Suivi de la case enfoncee sous la souris pour annulation au relâchement */
-    int pressedCellX, pressedCellY;
-
     void renderDirtyCells();
     int menu();
-    void play(Difficulty d);
+    int play(Difficulty d); /* 0 = retour au menu, 1 = rejouer */
     void showHighScores();
     void promptNewRecord(Difficulty d, int seconds);
     void computeLayout();
@@ -44,7 +41,7 @@ class MinesApp
 
 public:
     MinesApp();
-    void run();
+    void run(const char *exePath);
 };
 
 #endif

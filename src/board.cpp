@@ -15,7 +15,7 @@ Board::~Board()
     }
 }
 
-void Board::setup(Difficulty d)
+int Board::setup(Difficulty d)
 {
     if (grid)
     {
@@ -40,11 +40,19 @@ void Board::setup(Difficulty d)
         H = 16;
         mines = 99;
     }
-    grid = (Cell *)calloc(W * H, sizeof(Cell));
     firstClickDone = 0;
     flagsCount = 0;
     revealedCount = 0;
     dirtyCount = 0;
+    grid = (Cell *)calloc(W * H, sizeof(Cell));
+    if (!grid)
+    {
+        W = 0;
+        H = 0;
+        mines = 0;
+        return 0;
+    }
+    return 1;
 }
 
 void Board::placeMines(int safeX, int safeY)
@@ -110,8 +118,9 @@ int Board::reveal(int x, int y)
 {
     if (x < 0 || x >= W || y < 0 || y >= H)
         return -1;
-    Cell &c = grid[y * W + x];
-    if (c.isRevealed || c.isFlagged)
+
+    Cell &first = grid[y * W + x];
+    if (first.isRevealed || first.isFlagged)
         return -1;
 
     if (!firstClickDone)
@@ -120,26 +129,50 @@ int Board::reveal(int x, int y)
         firstClickDone = 1;
     }
 
-    c.isRevealed = 1;
+    first.isRevealed = 1;
     addDirty(x, y);
     revealedCount++;
 
-    if (c.isMine)
+    if (first.isMine)
     {
-        c.isExploded = 1;
+        first.isExploded = 1;
         return 0; /* Perdu */
     }
 
-    /* Cascade (Flood-fill) si case vide */
-    if (c.count == 0)
+    /* Cascade iterative : une case est marquee revelee AVANT d'etre empilee,
+       donc elle ne l'est qu'une fois -> la pile ne depasse jamais W*H (480). */
+    int sp = 0;
+    fillStack[sp++] = y * W + x;
+
+    while (sp > 0)
     {
+        int idx = fillStack[--sp];
+        if (grid[idx].count != 0)
+            continue; /* case numerotee : on ne propage pas */
+
+        int cx = idx % W;
+        int cy = idx / W;
+
         for (int dy = -1; dy <= 1; dy++)
         {
+            int ny = cy + dy;
+            if (ny < 0 || ny >= H)
+                continue;
+
             for (int dx = -1; dx <= 1; dx++)
             {
-                if (dx == 0 && dy == 0)
+                int nx = cx + dx;
+                if (nx < 0 || nx >= W || (dx == 0 && dy == 0))
                     continue;
-                reveal(x + dx, y + dy);
+
+                Cell &nb = grid[ny * W + nx];
+                if (nb.isRevealed || nb.isFlagged)
+                    continue;
+
+                nb.isRevealed = 1;
+                addDirty(nx, ny);
+                revealedCount++;
+                fillStack[sp++] = ny * W + nx;
             }
         }
     }
@@ -251,25 +284,6 @@ void Board::chord(int x, int y, int &exploded)
                     }
                     neighbor++; // evite de recalculer l'index
                 }
-            }
-        }
-    }
-}
-
-void Board::revealAllMines()
-{
-    for (int y = 0; y < H; y++)
-    {
-        for (int x = 0; x < W; x++)
-        {
-            Cell &c = grid[y * W + x];
-            if (c.isMine && !c.isFlagged && !c.isExploded)
-            {
-                c.isRevealed = 1;
-            }
-            else if (!c.isMine && c.isFlagged)
-            {
-                c.isFalseMine = 1;
             }
         }
     }

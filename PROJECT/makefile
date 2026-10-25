@@ -10,10 +10,11 @@ BGI      = $(BC_PATH)\BGI
 
 # Indique à Borland Make où chercher les fichiers sources .cpp
 .path.cpp = $(SRC_DIR)
+.autodepend
 
 # Par défaut, si DEBUG n'est pas défini, on est en Release
 !ifdef DEBUG
-CFLAGS = -ml -v -y -O- $(INCLUDES)    # Model Large, Debug info, Pas d'optimisation
+CFLAGS = -ml -v -y -O- -N $(INCLUDES)    # Model Large, Debug info, Pas d'optimisation
 !else
 CFLAGS = -ml -v- -O2 -vi -2 -y- $(INCLUDES) # Model Large, Pas de debug info, Optimisation vitesse
 !endif

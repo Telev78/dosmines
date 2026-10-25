@@ -75,6 +75,21 @@ public:
         memPos += bytes;
         return bytes;
     }
+
+    /* Taille totale du flux (octets) */
+    long size()
+    {
+        if (f)
+        {
+            long cur = ftell(f);
+            long n;
+            fseek(f, 0L, SEEK_END);
+            n = ftell(f);
+            fseek(f, cur, SEEK_SET);
+            return n;
+        }
+        return memSize;
+    }
 };
 
 static int decodeBMPInternal(Video *vid, BMPStream &stream,
@@ -227,7 +242,7 @@ int Video::loadSprites(const char *filepath)
         /* 1. Extinction materielle (sequenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
-        /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+        /* 2. Extinction de la palette DAC (tous les index a noir pour DOSBox) */
 
         int k;
         for (k = 0; k < 16; k++)
@@ -244,10 +259,14 @@ int Video::loadSprites(const char *filepath)
     if (isVGA)
     {
         /* 3. Rallumage materiel du signal video une fois l'ecran nettoye */
+        if (!res)
+            restoreDefaultPalette();
         setDisplayEnable(1);
     }
     if (res)
         spritesLoaded = 1;
+    else
+        freeSprites();
     return res;
 }
 
@@ -261,7 +280,7 @@ int Video::loadSpritesFromMemory(const unsigned char far *data, long size)
         /* 1. Extinction materielle (sequenceur VGA pour vraie machine / 86Box) */
         setDisplayEnable(0);
 
-        /* 2. Extinction de la palette DAC (tous les index à noir pour DOSBox) */
+        /* 2. Extinction de la palette DAC (tous les index a noir pour DOSBox) */
         int k;
         for (k = 0; k < 16; k++)
         {
@@ -275,53 +294,82 @@ int Video::loadSpritesFromMemory(const unsigned char far *data, long size)
     if (isVGA)
     {
         /* 3. Rallumage materiel du signal video une fois l'ecran nettoye */
+        if (!res)
+            restoreDefaultPalette();
         setDisplayEnable(1);
     }
     if (res)
         spritesLoaded = 1;
+    else
+        freeSprites();
     return res;
 }
+
+/* Dimensions minimales de la sprite sheet attendue (169x84) */
+#define SHEET_MIN_W 169
+#define SHEET_MIN_H 84
+/* Borne haute : evite tout debordement de int sur imgW * 4 */
+#define SHEET_MAX_DIM 2048
 
 static int decodeBMPInternal(Video *vid, BMPStream &stream,
                              int &colHighlight, int &colShadow, int &colSurface, int &colSunkenBg,
                              void *digitSprites[12], void *emojiSprites[5],
                              void *cellSprites[8], void *numSprites[8])
 {
-    (void)vid;
     BMPFileHeader bfh;
     BMPInfoHeader bih;
 
+    /* --- 1. En-tetes --- */
     if (stream.read(&bfh, sizeof(BMPFileHeader)) != sizeof(BMPFileHeader) || bfh.bfType != 0x4D42)
-    {
         return 0;
-    }
 
-    if (stream.read(&bih, sizeof(BMPInfoHeader)) != sizeof(BMPInfoHeader) || bih.biBitCount != 4)
-    {
+    if (stream.read(&bih, sizeof(BMPInfoHeader)) != sizeof(BMPInfoHeader))
         return 0;
-    }
 
-    /* 1. Lecture de la palette du BMP (stockee localement, PAS encore injectee au DAC pour garder l'ecran noir) */
-    int numColors = (int)bih.biClrUsed;
-    if (numColors == 0 || numColors > 16)
-    {
-        numColors = 16; /* Format standard BMP 4-bits */
-    }
+    /* biSize : 40 (Windows 3.x), mais V4/V5 (108, 124) sont aussi valides */
+    if (bih.biSize < 40L || bih.biSize > 1024L)
+        return 0;
 
-    BMPColorEntry bmpPalette[16];
-    stream.seek(sizeof(BMPFileHeader) + sizeof(BMPInfoHeader));
-    int readColors = stream.read(bmpPalette, sizeof(BMPColorEntry) * numColors) / sizeof(BMPColorEntry);
+    /* Format strictement requis : 4 bits, 1 plan, non compresse */
+    if (bih.biPlanes != 1 || bih.biBitCount != 4 || bih.biCompression != 0L)
+        return 0;
+
+    /* Dimensions : hauteur positive (bottom-up), taille suffisante pour la sprite sheet */
+    if (bih.biWidth < SHEET_MIN_W || bih.biWidth > SHEET_MAX_DIM)
+        return 0;
+    if (bih.biHeight < SHEET_MIN_H || bih.biHeight > SHEET_MAX_DIM)
+        return 0;
 
     int imgW = (int)bih.biWidth;
     int imgH = (int)bih.biHeight;
     int rowStride = ((imgW * 4 + 31) / 32) * 4;
 
-    /* Allocation d'un petit buffer pour une seule ligne (rowStride = 88 octets) */
+    /* --- 2. Palette --- */
+    int numColors = 16;
+    if (bih.biClrUsed != 0L && bih.biClrUsed <= 16L)
+        numColors = (int)bih.biClrUsed;
+
+    /* La palette suit l'en-tete d'info, dont la taille reelle est biSize */
+    long palOffset = (long)sizeof(BMPFileHeader) + (long)bih.biSize;
+    long palEnd = palOffset + (long)numColors * (long)sizeof(BMPColorEntry);
+
+    /* --- 3. Zone de pixels --- */
+    if ((long)bfh.bfOffBits < palEnd)
+        return 0;
+    if ((long)bfh.bfOffBits + (long)imgH * (long)rowStride > stream.size())
+        return 0; /* fichier tronque */
+
+    BMPColorEntry bmpPalette[16];
+    if (stream.seek(palOffset) != 0)
+        return 0;
+    int readColors = stream.read(bmpPalette, sizeof(BMPColorEntry) * numColors) / sizeof(BMPColorEntry);
+    if (readColors != numColors)
+        return 0;
+
+    /* Allocation d'un buffer pour une seule ligne */
     unsigned char *rowBuffer = (unsigned char *)malloc(rowStride);
     if (!rowBuffer)
-    {
         return 0;
-    }
 
     /* 2. Extraction directe des teintes de relief depuis le sprite de la cellule non-devoilee */
     int cellRowTop = imgH - 1 - 50;
@@ -396,10 +444,12 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         digitSprites[i] = malloc(sz);
-        if (digitSprites[i])
+        if (!digitSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, digitSprites[i]);
+            free(rowBuffer);
+            return 0;
         }
+        getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, digitSprites[i]);
     }
     cleardevice();
 
@@ -433,10 +483,12 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         emojiSprites[i] = malloc(sz);
-        if (emojiSprites[i])
+        if (!emojiSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, emojiSprites[i]);
+            free(rowBuffer);
+            return 0;
         }
+        getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, emojiSprites[i]);
     }
 
     cleardevice();
@@ -471,13 +523,15 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         cellSprites[i] = malloc(sz);
-        if (cellSprites[i])
+        if (!cellSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, cellSprites[i]);
+            free(rowBuffer);
+            return 0;
         }
+        getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, cellSprites[i]);
     }
 
-    /* 7. Ligne 4 (Chiffres de proximite 1 à 8, Y=67) : 8 sprites de 16x16 pixels */
+    /* 7. Ligne 4 (Chiffres de proximite 1 a 8, Y=67) : 8 sprites de 16x16 pixels */
     for (i = 0; i < 8; i++)
     {
         int srcX = 1 + i * 17;
@@ -506,10 +560,12 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         unsigned int sz = imagesize(tempX, tempY, tempX + sw - 1, tempY + targetH - 1);
         numSprites[i] = malloc(sz);
-        if (numSprites[i])
+        if (!numSprites[i])
         {
-            getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, numSprites[i]);
+            free(rowBuffer);
+            return 0;
         }
+        getimage(tempX, tempY, tempX + sw - 1, tempY + targetH - 1, numSprites[i]);
     }
 
     free(rowBuffer);
@@ -594,7 +650,7 @@ void Video::drawUnrevealedGrid(int x, int y, int w, int h)
         drawCell(x + col * 16, y, SPR_CELL_UNREVEALED);
     }
 
-    // 2. Allouer un tampon adapte à la hauteur reelle (12 ou 16)
+    // 2. Allouer un tampon adapte a la hauteur reelle (12 ou 16)
     int rowWidthPx = w * 16;
     unsigned int bufSize = imagesize(x, y, x + rowWidthPx - 1, y + (cellH - 1));
     void *rowBuffer = malloc(bufSize);
@@ -657,7 +713,7 @@ void Video::drawDigit(int x, int y, int digitIdx)
     }
 }
 
-/* Affichage d'un compteur à 3 digits (format Windows : 000 à 999 ou negatif) */
+/* Affichage d'un compteur a 3 digits (format Windows : 000 a 999 ou negatif) */
 void Video::drawCounter(int x, int y, int value)
 {
     if (value < -99)
@@ -681,7 +737,7 @@ void Video::drawCounter(int x, int y, int value)
         int v1 = (value / 10) % 10;
         int v2 = value % 10;
 
-        /* Conversion d'index pour correspondre à l'ordre du BMP (1..9, 0) */
+        /* Conversion d'index pour correspondre a l'ordre du BMP (1..9, 0) */
         d[0] = (v0 == 0) ? 9 : (v0 - 1);
         d[1] = (v1 == 0) ? 9 : (v1 - 1);
         d[2] = (v2 == 0) ? 9 : (v2 - 1);
@@ -745,5 +801,17 @@ void Video::setCreditColor()
     else
     {
         setcolor(colShadow);
+    }
+}
+
+/* Remet la palette VGA standard 16 couleurs (apres un echec de chargement) */
+void Video::restoreDefaultPalette()
+{
+    static const unsigned char pal[16][3] = {
+        {0, 0, 0}, {0, 0, 170}, {0, 170, 0}, {0, 170, 170}, {170, 0, 0}, {170, 0, 170}, {170, 85, 0}, {170, 170, 170}, {85, 85, 85}, {85, 85, 255}, {85, 255, 85}, {85, 255, 255}, {255, 85, 85}, {255, 85, 255}, {255, 255, 85}, {255, 255, 255}};
+    int k;
+    for (k = 0; k < 16; k++)
+    {
+        setVgaPaletteIndex(k, pal[k][0], pal[k][1], pal[k][2]);
     }
 }

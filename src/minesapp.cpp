@@ -5,12 +5,62 @@
 #include "minesapp.h"
 #include "assetdef.h"
 
+/* Lit une touche (a appeler uniquement si kbhit() est vrai).
+   Retourne :  0..255  = caractere ordinaire
+               256+n   = touche etendue, n = scan code (fleches, F1.., Alt+lettre...) */
+static int readKey()
+{
+    int c = getch();
+    if (c == 0 || c == 0xE0)
+    {
+        c = 256 + getch();
+    }
+    return c;
+}
+
+static void drawText(int x, int y, const char *s)
+{
+    outtextxy(x, y, (char *)s);
+}
+
+static int textW(const char *s)
+{
+    return textwidth((char *)s);
+}
+
+/* Rend la main au systeme hote quand il n'y a rien a faire.
+   Appelee a chaque tour des boucles d'attente (souris / clavier). */
+static void idle()
+{
+    union REGS r;
+
+    /* 1. Cede la tranche de temps : Windows 3.x/9x, OS/2, DOSBox-X, DOSIDLE... */
+    r.x.ax = 0x1680;
+    int86(0x2F, &r, &r);
+
+    /* 2. Arret du processeur jusqu'a la prochaine interruption
+          (tick timer 18,2 Hz, souris, clavier) */
+    __emit__(0xF4); /* HLT */
+}
+
+static void showMemoryError()
+{
+    cleardevice();
+    settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
+    setcolor(WHITE);
+    drawText(20, 20, STR_ERR_MEMORY);
+    drawText(20, 40, STR_ERR_PRESS_KEY);
+    readKey();
+}
+
 MinesApp::MinesApp() : state(STATE_MENU), emojiState(EMOJI_NORMAL), questionMarksEnabled(1)
 {
 }
 
-void MinesApp::run()
+void MinesApp::run(const char *exePath)
 {
+    scores.init(exePath);
+
     /* 1. Verification materielle VGA / EGA */
     if (!v.init())
     {
@@ -32,10 +82,15 @@ void MinesApp::run()
 
     /* 3. Chargement de la sprite sheet */
     int loaded = v.loadSprites("asset.bmp");
-
     if (!loaded)
     {
-        v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
+        loaded = v.loadSpritesFromMemory(default_asset_bmp, sizeof(default_asset_bmp));
+    }
+    if (!loaded)
+    {
+        closegraph();
+        printf("\n%s\n", STR_ERR_SPRITES);
+        return;
     }
 
     /* Boucle de jeu iterative (ZeRO recursion) */
@@ -46,7 +101,11 @@ void MinesApp::run()
         {
             break; /* Echap dans le menu : quitter proprement */
         }
-        play((Difficulty)choice);
+        int again;
+        do
+        {
+            again = play((Difficulty)choice);
+        } while (again);
     }
 }
 
@@ -84,7 +143,7 @@ void MinesApp::drawFullInterface(int isInitial)
     /* En-tete */
     v.drawPanel(headerX, headerY, headerW, headerH, 0);
 
-    /* Grille en relief creuse encadrant pile les cellules de gridX à gridX + boardWidthPx - 1 */
+    /* Grille en relief creuse encadrant pile les cellules de gridX a gridX + boardWidthPx - 1 */
     v.drawBezel(gridX - 1, gridY - 1, boardWidthPx + 1, boardHeightPx + 1, 0);
 
     drawHeader();
@@ -197,6 +256,7 @@ void MinesApp::drawGrid()
 
 int MinesApp::menu()
 {
+redraw_menu:
     state = STATE_MENU;
     cleardevice();
 
@@ -227,11 +287,11 @@ int MinesApp::menu()
         settextstyle(SANS_SERIF_FONT, HORIZ_DIR, 2); /* Taille 2 plus fine en EGA */
     }
 
-    int titleX = panelX + (panelW - textwidth((char *)STR_MENU_TITLE)) / 2;
+    int titleX = panelX + (panelW - textW(STR_MENU_TITLE)) / 2;
     int titleY = panelY + (isVga ? 15 : 12);
-    outtextxy(titleX, titleY, (char *)STR_MENU_TITLE);
-    outtextxy(titleX + 1, titleY, (char *)STR_MENU_TITLE);
-    outtextxy(titleX, titleY + 1, (char *)STR_MENU_TITLE);
+    drawText(titleX, titleY, STR_MENU_TITLE);
+    drawText(titleX + 1, titleY, STR_MENU_TITLE);
+    drawText(titleX, titleY + 1, STR_MENU_TITLE);
 
     /* 3. Boutons en police standard avec coordonnees verticales adaptees */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
@@ -251,48 +311,48 @@ int MinesApp::menu()
     int optY = btn3Y + btnH + (isVga ? 8 : 6);
     int scrY = optY + optH + (isVga ? 8 : 6);
 
-    /* Decalage vertical du texte à l'interieur des boutons pour un centrage parfait */
+    /* Decalage vertical du texte a l'interieur des boutons pour un centrage parfait */
     int textPaddingBtn = isVga ? 12 : 8;
     int textPaddingOpt = isVga ? 10 : 6;
 
     /* Dessin du bouton 1 : Debutant */
     v.drawPanel(btnX, btn1Y, btnW, btnH, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn1Y + textPaddingBtn, (char *)STR_MENU_BEGINNER);
+    drawText(btnX + 20, btn1Y + textPaddingBtn, STR_MENU_BEGINNER);
 
     /* Dessin du bouton 2 : Intermediaire */
     v.drawPanel(btnX, btn2Y, btnW, btnH, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn2Y + textPaddingBtn, (char *)STR_MENU_INTERMED);
+    drawText(btnX + 20, btn2Y + textPaddingBtn, STR_MENU_INTERMED);
 
     /* Dessin du bouton 3 : Avance */
     v.drawPanel(btnX, btn3Y, btnW, btnH, 1);
     v.setTextColor();
-    outtextxy(btnX + 20, btn3Y + textPaddingBtn, (char *)STR_MENU_ADVANCED);
+    drawText(btnX + 20, btn3Y + textPaddingBtn, STR_MENU_ADVANCED);
 
     /* 4. Bouton d'option toggle pour les marques (?) */
     v.drawPanel(btnX, optY, btnW, optH, questionMarksEnabled ? 0 : 1);
     v.setTextColor();
     if (questionMarksEnabled)
     {
-        outtextxy(btnX + 12, optY + textPaddingOpt, (char *)STR_MENU_MARKS_ON);
+        drawText(btnX + 12, optY + textPaddingOpt, STR_MENU_MARKS_ON);
     }
     else
     {
-        outtextxy(btnX + 12, optY + textPaddingOpt, (char *)STR_MENU_MARKS_OFF);
+        drawText(btnX + 12, optY + textPaddingOpt, STR_MENU_MARKS_OFF);
     }
 
     /* 5. Bouton "MEILLEURS TEMPS" */
     v.drawPanel(btnX, scrY, btnW, optH, 1);
     v.setTextColor();
-    outtextxy(btnX + 24, scrY + textPaddingOpt, (char *)STR_MENU_SCORES);
+    drawText(btnX + 24, scrY + textPaddingOpt, STR_MENU_SCORES);
 
     /* 6. Mentions de credits (Coins inferieurs de l'ecran global) */
     settextstyle(SMALL_FONT, HORIZ_DIR, 4);
     v.setCreditColor();
     int credY = screenH - 20;
-    outtextxy(15, credY, (char *)STR_CREDIT_LEFT);
-    outtextxy(625 - textwidth((char *)STR_CREDIT_RIGHT), credY, (char *)STR_CREDIT_RIGHT);
+    drawText(15, credY, STR_CREDIT_LEFT);
+    drawText(625 - textW(STR_CREDIT_RIGHT), credY, STR_CREDIT_RIGHT);
 
     /* Retablir la police par defaut pour le reste du jeu */
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
@@ -306,7 +366,7 @@ int MinesApp::menu()
     {
         if (kbhit())
         {
-            char ch = getch();
+            int ch = readKey();
             if (ch == '1')
                 return (int)BEGINNER;
             else if (ch == '2')
@@ -317,7 +377,7 @@ int MinesApp::menu()
             {
                 m.hide();
                 showHighScores();
-                return menu();
+                goto redraw_menu;
             }
             else if (ch == 'm' || ch == 'M' || ch == '?')
             {
@@ -325,7 +385,7 @@ int MinesApp::menu()
                 m.hide();
                 v.drawPanel(btnX, optY, btnW, optH, questionMarksEnabled ? 0 : 1);
                 v.setTextColor();
-                outtextxy(btnX + 12, optY + textPaddingOpt, questionMarksEnabled ? (char *)STR_MENU_MARKS_ON : (char *)STR_MENU_MARKS_OFF);
+                drawText(btnX + 12, optY + textPaddingOpt, questionMarksEnabled ? STR_MENU_MARKS_ON : STR_MENU_MARKS_OFF);
                 m.show();
             }
             else if (ch == 27)
@@ -381,28 +441,33 @@ int MinesApp::menu()
                     m.hide();
                     v.drawPanel(btnX, optY, btnW, optH, questionMarksEnabled ? 0 : 1);
                     v.setTextColor();
-                    outtextxy(btnX + 12, optY + textPaddingOpt, questionMarksEnabled ? (char *)STR_MENU_MARKS_ON : (char *)STR_MENU_MARKS_OFF);
+                    drawText(btnX + 12, optY + textPaddingOpt, questionMarksEnabled ? STR_MENU_MARKS_ON : STR_MENU_MARKS_OFF);
                     m.show();
                 }
                 else if (pressedBtn == 5 && (my >= scrY && my <= scrY + optH))
                 {
                     m.hide();
                     showHighScores();
-                    return menu();
+                    goto redraw_menu;
                 }
             }
             pressedBtn = 0;
         }
 
         lastB = mb;
+        idle();
     }
     return -1;
 }
 
-void MinesApp::play(Difficulty d)
+int MinesApp::play(Difficulty d)
 {
     m.hide();
-    b.setup(d);
+    if (!b.setup(d))
+    {
+        showMemoryError();
+        return 0; /* retour au menu */
+    }
     computeLayout();
 
     state = STATE_PLAYING;
@@ -455,11 +520,11 @@ void MinesApp::play(Difficulty d)
            ------------------------------------------------------------- */
         if (kbhit())
         {
-            char k = getch();
+            int k = readKey();
             if (k == 27)
             { /* Echap */
                 m.hide();
-                return;
+                return 0;
             }
         }
 
@@ -470,10 +535,11 @@ void MinesApp::play(Difficulty d)
 
         int cellH = (v.getIsVGA() == 1) ? 16 : 12;
 
-        int gx = (mx - gridX) / 16;
-        int gy = (my - gridY) / cellH;
+        int gx = (mx >= gridX) ? (mx - gridX) / 16 : -1;
+        int gy = (my >= gridY) ? (my - gridY) / cellH : -1;
         int onGrid = (gx >= 0 && gx < b.getW() && gy >= 0 && gy < b.getH());
-        int onEmoji = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
+        int emojiH = (v.getIsVGA() == 1) ? 24 : 18;
+        int onEmoji = (mx >= emojiX && mx < emojiX + 24 && my >= emojiY && my < emojiY + emojiH);
 
         /* -------------------------------------------------------------
            Animation dynamique du visage de l'emoji (En cours de partie)
@@ -546,6 +612,8 @@ void MinesApp::play(Difficulty d)
             isChording = 1;
             pressedCellX = -1;
             pressedCellY = -1;
+            lastLeftX = -1;
+            lastLeftY = -1;
         }
 
         /* =========================================================================
@@ -596,7 +664,7 @@ void MinesApp::play(Difficulty d)
                     }
                     m.show();
 
-                    // On met à jour la position courante du Chord
+                    // On met a jour la position courante du Chord
                     lastChordX = gx;
                     lastChordY = gy;
                 }
@@ -670,7 +738,7 @@ void MinesApp::play(Difficulty d)
         }
 
         /* =========================================================================
-        3. GESTION DU MOUSE-UP (Relâchement et execution)
+        3. GESTION DU MOUSE-UP (Relachement et execution)
         ========================================================================= */
         if (isChording && (!(mb & 1) || !(mb & 2)))
         {
@@ -713,7 +781,7 @@ void MinesApp::play(Difficulty d)
             }
             else
             {
-                // Relâchement hors case : relever la zone 3x3
+                // Relachement hors case : relever la zone 3x3
                 if (lastChordX != -1 && lastChordY != -1)
                 {
                     for (int dy = -1; dy <= 1; dy++)
@@ -732,9 +800,13 @@ void MinesApp::play(Difficulty d)
             }
             isChording = 0;
             pressedCellX = -1;
+            pressedCellY = -1;
             rightPressedX = -1;
+            rightPressedY = -1;
             lastChordX = -1;
             lastChordY = -1;
+            lastLeftX = -1;
+            lastLeftY = -1;
             m.show();
         }
         else if (!(mb & 1) && (lastB & 1) && !isChording)
@@ -742,7 +814,11 @@ void MinesApp::play(Difficulty d)
             if (pressedOnEmoji && onEmoji)
             {
                 m.hide();
-                b.setup(d);
+                if (!b.setup(d))
+                {
+                    showMemoryError();
+                    return 0;
+                }
                 emojiState = EMOJI_NORMAL;
                 elapsedSeconds = 0;
                 gameStartTime = 0;
@@ -811,6 +887,7 @@ void MinesApp::play(Difficulty d)
         }
 
         lastB = mb;
+        idle();
     }
 
     /* Fin de partie : ecran fixe */
@@ -819,7 +896,7 @@ void MinesApp::play(Difficulty d)
     {
         emojiState = EMOJI_LOST;
 
-        m.hide(); // On cache la souris une seule fois avant la grosse mise à jour
+        m.hide(); // On cache la souris une seule fois avant la grosse mise a jour
 
         // Au lieu de modifier la grille en memoire puis de TOUT redessiner,
         // on parcourt la grille et on ne dessine QUE les mines qui apparaissent
@@ -832,7 +909,7 @@ void MinesApp::play(Difficulty d)
                 // Si c'est une mine non decouverte, ou un faux drapeau
                 if ((c.isMine && !c.isFlagged) || (!c.isMine && c.isFlagged))
                 {
-                    // On met à jour l'etat logique de la case
+                    // On met a jour l'etat logique de la case
                     if (c.isMine && !c.isExploded)
                     {
                         c.isRevealed = 1;
@@ -856,6 +933,9 @@ void MinesApp::play(Difficulty d)
         v.drawCounter(mineCounterX, counterY, 0);
         v.drawEmoji(emojiX, emojiY, emojiState);
 
+        if (elapsedSeconds < 1)
+            elapsedSeconds = 1;
+
         /* Verification d'un nouveau record */
         if (scores.isNewRecord(d, elapsedSeconds))
         {
@@ -872,13 +952,14 @@ void MinesApp::play(Difficulty d)
     {
         if (kbhit())
         {
-            getch();
+            readKey();
             m.hide();
-            return;
+            return 0;
         }
 
         m.getStatus(mx, my, mb);
-        int onEmojiEnd = (mx >= emojiX && mx <= emojiX + 24 && my >= emojiY && my <= emojiY + 24);
+        int emojiH2 = (v.getIsVGA() == 1) ? 24 : 18;
+        int onEmojiEnd = (mx >= emojiX && mx < emojiX + 24 && my >= emojiY && my < emojiY + emojiH2);
 
         int targetEmojiEnd = (state == STATE_WON) ? EMOJI_WON : EMOJI_LOST;
         if (onEmojiEnd && (mb & 1) && pressedOnEmoji)
@@ -903,17 +984,20 @@ void MinesApp::play(Difficulty d)
             if (pressedOnEmoji && onEmojiEnd)
             {
                 pressedOnEmoji = 0;
-                play(d);
-                return;
+                return 1;
             }
             pressedOnEmoji = 0;
         }
         lastB = mb;
+        idle();
     }
+
+    return 0;
 }
 
 void MinesApp::showHighScores()
 {
+redraw_scores:
     int isVga = (v.getIsVGA() == 1);
     int screenH = isVga ? 480 : 350;
 
@@ -928,8 +1012,8 @@ void MinesApp::showHighScores()
     /* Titre des scores adapte (Taille 2 en VGA, Taille 1 en EGA) */
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, isVga ? 2 : 1);
     const char *hTitle = STR_MENU_SCORES_TITLE;
-    int tx = pX + (pW - textwidth((char *)hTitle)) / 2;
-    outtextxy(tx, pY + (isVga ? 12 : 8), (char *)hTitle);
+    int tx = pX + (pW - textW((char *)hTitle)) / 2;
+    drawText(tx, pY + (isVga ? 12 : 8), (char *)hTitle);
 
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
     const char *diffNames[3] = {STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED};
@@ -943,7 +1027,11 @@ void MinesApp::showHighScores()
     {
         const HighScore &s = scores.get((Difficulty)i);
         sprintf(lineBuf, "%-14s: %3d s  %-10s", diffNames[i], s.time, s.name);
-        outtextxy(pX + 24, pY + tableTop + i * rowSpacing, lineBuf);
+        drawText(pX + 24, pY + tableTop + i * rowSpacing, lineBuf);
+    }
+    if (scores.hasSaveError())
+    {
+        drawText(pX + 24, pY + (isVga ? 136 : 100), STR_MENU_SCORES_SAVEERR);
     }
 
     /* Dimensions et positions des boutons Ok et Reset */
@@ -955,11 +1043,11 @@ void MinesApp::showHighScores()
 
     v.drawPanel(btnResetX, btnResetY, btnResetW, btnH, 1);
     v.setTextColor();
-    outtextxy(btnResetX + 10, btnResetY + textPadding, STR_MENU_SCORES_RESET);
+    drawText(btnResetX + 10, btnResetY + textPadding, STR_MENU_SCORES_RESET);
 
     v.drawPanel(btnOkX, btnResetY, btnOkW, btnH, 1);
     v.setTextColor();
-    outtextxy(btnOkX + 48, btnResetY + textPadding, STR_MENU_SCORES_OK);
+    drawText(btnOkX + 48, btnResetY + textPadding, STR_MENU_SCORES_OK);
 
     m.show();
     int mx, my, mb, lastB = 0;
@@ -969,7 +1057,7 @@ void MinesApp::showHighScores()
     {
         if (kbhit())
         {
-            char ch = getch();
+            int ch = readKey();
             if (ch == 27 || ch == 13 || ch == 'o' || ch == 'O')
                 break;
             if (ch == 'r' || ch == 'R')
@@ -977,8 +1065,7 @@ void MinesApp::showHighScores()
                 scores.reset();
                 scores.save();
                 m.hide();
-                showHighScores();
-                return;
+                goto redraw_scores;
             }
         }
 
@@ -1002,8 +1089,7 @@ void MinesApp::showHighScores()
                 scores.reset();
                 scores.save();
                 m.hide();
-                showHighScores();
-                return;
+                goto redraw_scores;
             }
             else if (mx >= btnOkX && mx <= btnOkX + btnOkW && my >= btnResetY && my <= btnResetY + btnH)
             {
@@ -1012,6 +1098,7 @@ void MinesApp::showHighScores()
             pressed = 0;
         }
         lastB = mb;
+        idle();
     }
     m.hide();
 }
@@ -1032,16 +1119,16 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds)
     /* Sous-titre vectoriel */
     settextstyle(SANS_SERIF_FONT, HORIZ_DIR, isVga ? 2 : 1);
     const char *hTitle = STR_MENU_SCORES_NEWRECORD1;
-    int tx = pX + (pW - textwidth((char *)hTitle)) / 2;
-    outtextxy(tx, pY + (isVga ? 12 : 8), (char *)hTitle);
+    int tx = pX + (pW - textW((char *)hTitle)) / 2;
+    drawText(tx, pY + (isVga ? 12 : 8), (char *)hTitle);
 
     settextstyle(DEFAULT_FONT, HORIZ_DIR, 1);
     char buf[64];
     const char *diffNames[3] = {STR_MENU_SCORES_BEGINNER, STR_MENU_SCORES_INTERMED, STR_MENU_SCORES_ADVANCED};
     sprintf(buf, STR_MENU_SCORES_NEWRECORD2, diffNames[(int)d], seconds);
-    outtextxy(pX + (pW - textwidth(buf)) / 2, pY + (isVga ? 50 : 38), buf);
+    drawText(pX + (pW - textW(buf)) / 2, pY + (isVga ? 50 : 38), buf);
 
-    outtextxy(pX + 25, pY + (isVga ? 76 : 58), STR_MENU_SCORES_NAME);
+    drawText(pX + 25, pY + (isVga ? 76 : 58), STR_MENU_SCORES_NAME);
 
     /* Zone d'edition de texte (Sunken) ecrasee en EGA (18px de haut au lieu de 24px) */
     int editX = pX + 25, editY = pY + (isVga ? 96 : 74), editW = 290;
@@ -1057,7 +1144,7 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds)
 
     v.drawPanel(btnOkX, btnOkY, btnOkW, btnOkH, 1);
     v.setTextColor();
-    outtextxy(btnOkX + 40, btnOkY + textPaddingOk, STR_MENU_SCORES_OK);
+    drawText(btnOkX + 40, btnOkY + textPaddingOk, STR_MENU_SCORES_OK);
 
     char name[16];
     name[0] = '\0';
@@ -1071,7 +1158,7 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds)
     {
         if (kbhit())
         {
-            char ch = getch();
+            int ch = readKey();
             if (ch == 13 || ch == 27)
             {
                 break;
@@ -1095,8 +1182,8 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds)
             setcolor(WHITE);
             char dispBuf[20];
             sprintf(dispBuf, "%s_", name);
-            /* Centrage vertical du texte saisi dans la boîte */
-            outtextxy(editX + 8, editY + (isVga ? 8 : 5), dispBuf);
+            /* Centrage vertical du texte saisi dans la boite */
+            drawText(editX + 8, editY + (isVga ? 8 : 5), dispBuf);
             m.show();
         }
 
@@ -1119,6 +1206,7 @@ void MinesApp::promptNewRecord(Difficulty d, int seconds)
             pressedOk = 0;
         }
         lastB = mb;
+        idle();
     }
 
     m.hide();

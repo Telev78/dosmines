@@ -24,7 +24,7 @@ const char *const STR_MENU_ADVANCED = "3. AVANCE (30x16)";
 const char *const STR_MENU_SCORES = "MEILLEURS TEMPS (T)";
 const char *const STR_MENU_MARKS_ON = "[X] MARQUES (?) (M)";
 const char *const STR_MENU_MARKS_OFF = "[ ] MARQUES (?) (M)";
-const char *const STR_CREDIT_LEFT = "v1.5 - (c) 2026 Telev";
+const char *const STR_CREDIT_LEFT = "v1.6 - (c) 2026 Telev";
 const char *const STR_CREDIT_RIGHT = "Sprites: Black Squirrel";
 const char *const STR_MENU_SCORES_BEGINNER = "Debutant";
 const char *const STR_MENU_SCORES_INTERMED = "Intermediaire";
@@ -43,5 +43,9 @@ const char *const STR_ERR_GRAPH_LINE2 = " ERREUR : Carte graphique EGA ou VGA no
 const char *const STR_ERR_GRAPH_LINE3 = " Ce jeu necessite une carte EGA (640x350) ou VGA (640x480).";
 const char *const STR_ERR_GRAPH_LINE4 = " Les cartes CGA et Hercules ne sont pas supportees.";
 const char *const STR_ERR_MOUSE = "Erreur : Pilote souris DOS non detecte (int 33h) !";
+const char *const STR_ERR_MEMORY = "ERREUR : memoire insuffisante.";
+const char *const STR_ERR_PRESS_KEY = "Appuyez sur une touche.";
+const char *const STR_MENU_SCORES_SAVEERR = "Sauvegarde impossible !";
+const char *const STR_ERR_SPRITES = "ERREUR : chargement des sprites impossible.";
 
 #endif
