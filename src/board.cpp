@@ -308,3 +308,18 @@ void Board::addDirty(int x, int y)
         dirtyCount++;
     }
 }
+
+/* A la victoire : pose un drapeau sur toutes les mines (comme Windows) */
+void Board::flagAllMines()
+{
+    for (int i = 0; i < W * H; i++)
+    {
+        Cell &c = grid[i];
+        if (c.isMine)
+        {
+            c.isFlagged = 1;
+            c.isQuestion = 0;
+        }
+    }
+    flagsCount = mines;
+}

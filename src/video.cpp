@@ -311,6 +311,14 @@ int Video::loadSpritesFromMemory(const unsigned char far *data, long size)
 /* Borne haute : evite tout debordement de int sur imgW * 4 */
 #define SHEET_MAX_DIM 2048
 
+/* Correspondance de ligne pour la reduction verticale en EGA.
+   La premiere et la derniere ligne source sont toujours conservees
+   (py = 0 -> 0, py = targetH-1 -> sh-1), donc le biseau haut et bas survit. */
+static int mapRow(int py, int sh, int targetH)
+{
+    return (py * (sh - 1)) / (targetH - 1);
+}
+
 static int decodeBMPInternal(Video *vid, BMPStream &stream,
                              int &colHighlight, int &colShadow, int &colSurface, int &colSunkenBg,
                              void *digitSprites[12], void *emojiSprites[5],
@@ -426,7 +434,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
         for (py = 0; py < targetH; py++)
         {
             /* Nearest-neighbor : on remonte vers la ligne BMP d'origine */
-            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int origPy = isEgaMode ? mapRow(py, sh, targetH) : py;
             int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
 
@@ -465,7 +473,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         for (py = 0; py < targetH; py++)
         {
-            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int origPy = isEgaMode ? mapRow(py, sh, targetH) : py;
             int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
 
@@ -505,7 +513,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         for (py = 0; py < targetH; py++)
         {
-            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int origPy = isEgaMode ? mapRow(py, sh, targetH) : py;
             int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
 
@@ -542,7 +550,7 @@ static int decodeBMPInternal(Video *vid, BMPStream &stream,
 
         for (py = 0; py < targetH; py++)
         {
-            int origPy = isEgaMode ? (py * sh / targetH) : py;
+            int origPy = isEgaMode ? mapRow(py, sh, targetH) : py;
             int bmpRow = imgH - 1 - (srcY + origPy);
             long fileOffset = bfh.bfOffBits + (long)bmpRow * rowStride;
 

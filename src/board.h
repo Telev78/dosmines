@@ -49,7 +49,7 @@ public:
     int reveal(int x, int y);
     void toggleFlag(int x, int y, int enableQuestionMarks = 1);
     void chord(int x, int y, int &exploded);
-
+    void flagAllMines();
     int checkVictory();
 
     Cell &get(int x, int y);

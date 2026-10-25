@@ -930,7 +930,21 @@ int MinesApp::play(Difficulty d)
     else if (state == STATE_WON)
     {
         emojiState = EMOJI_WON;
-        v.drawCounter(mineCounterX, counterY, 0);
+
+        /* Pose automatique des drapeaux sur les mines, puis redessin de ces cases */
+        b.flagAllMines();
+        for (int y = 0; y < b.getH(); y++)
+        {
+            for (int x = 0; x < b.getW(); x++)
+            {
+                if (b.get(x, y).isMine)
+                {
+                    drawSingleCell(x, y);
+                }
+            }
+        }
+
+        v.drawCounter(mineCounterX, counterY, b.getRemainingMines());
         v.drawEmoji(emojiX, emojiY, emojiState);
 
         if (elapsedSeconds < 1)
